@@ -11,6 +11,7 @@ rank_scale = 10  # ranks count 0.5, 0.45, 0.42, 0.38...
 
 PI = 3.1415926
 
+
 @dataclass
 class Detection:
     pingno: int
@@ -19,6 +20,10 @@ class Detection:
     theta: float  # degrees
     phi: float
     rank: int     # zero is strongest detection, higher is worse
+
+    def __str__(self):
+        x0, y0, z0 = self.location()
+        return f'D {self.pingno} {self.freq //1000}kHz  Rng {self.range:5.2f} Th {self.theta:5.2f} Phi {self.phi:5.2f}\t[{x0:5.2f}, {y0:5.2f}, {z0:6.2f}]'
 
     def location(self):
         '''Convert to 3D coordinates'''
@@ -31,6 +36,39 @@ class Detection:
         '''Create from 3D coordinates'''
         pass
 
+
+def delta_pings(det1, det2, uncertainty=1):
+    '''Distance between detections in pings with given time difference'''
+    d_theta = det1.theta - det2.theta
+    d_phi = det1.phi - det2.phi
+    d_range = det1.range - det2.range
+    d_rank = rank_scale/(rank_scale*2 + det1.rank) + rank_scale/(rank_scale*2 + det2.rank)
+    # one if perfect match (all zero), towards zero if deviation is too large
+    # uncertainty less than one means the distribution is wider but lower
+    return sqrt(uncertainty) * d_rank * exp(- (d_range**2/range_sigma**2 + d_theta**2/angle_sigma**2 + d_phi**2/angle_sigma**2) * uncertainty)
+
+
+def mkdet(fields):
+    '''Parse a line of CSV input into a detection.'''
+    return Detection(pingno=int(fields[0]), freq=int(fields[3]), range=float(fields[4]),
+                     theta=float(fields[5]), phi=float(fields[6]), rank=0)
+
+
+# ########### Tracking across frequencies ######################
+
+def link_det(dets1, dets2):
+    '''Find optimal pairing'''
+    # calc matrix and return list of multi-dets
+    pass
+
+
+def genmdet(dets):
+    '''Group across frequencies from one ping.'''
+    # iterate link_det, by number of detections
+    pass
+
+
+# ############### Tracking across time ########################
 
 @dataclass
 class Track:
@@ -56,17 +94,6 @@ class Tracks:
     track: [Track]
     mru: []  # roll, pitch, heave?
     offsets: {}  # frequency -> location
-
-
-def delta_pings(det1, det2, uncertainty=1):
-    '''Distance between detections in pings with given time difference'''
-    d_theta = det1.theta - det2.theta
-    d_phi = det1.phi - det2.phi
-    d_range = det1.range - det2.range
-    d_rank = rank_scale/(rank_scale*2 + det1.rank) + rank_scale/(rank_scale*2 + det2.rank)
-    # one if perfect match (all zero), towards zero if deviation is too large
-    # uncertainty less than one means the distribution is wider but lower
-    return sqrt(uncertainty) * d_rank * exp(- (d_range**2/range_sigma**2 + d_theta**2/angle_sigma**2 + d_phi**2/angle_sigma**2) * uncertainty)
 
 
 def predict1(track, frequency):
@@ -104,25 +131,19 @@ def tracks(detections):
     pass
 
 
-def mkdet(fields):
-    return Detection(pingno=fields[0], freq=fields[3], range=fields[4], theta=fields[5], phi=fields[6], rank=0)
-
 
 import csv
 from itertools import groupby
 
-
-def pingid(a, b):
-    return a[0] == b[0]
-
-
 if __name__ == '__main__':
     with open('DetectedSingleTargets(in).csv', 'r') as f:
         r = csv.reader(f, delimiter='\t')
-        for k, rows in groupby(map(mkdet, r), key=lambda x: x.pingno):
+        next(r, None)  # skip header
+        for k, ds in groupby(map(mkdet, r), key=lambda x: x.pingno):
             print('Ping:', k)
-            for k2, rows2 in groupby(rows, key=lambda x: x.freq):
+            for k2, ds2 in groupby(ds, key=lambda x: x.freq):
                 print('Ping:', k, 'Freq:', k2)
-                for row in rows2: print(row)
+                for det in ds2:
+                    if det.range < 12 and det.range > 11: print(det)
                 print()
             print()
