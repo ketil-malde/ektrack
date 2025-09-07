@@ -98,6 +98,31 @@ def track1(tracks, detections):
     # link across frequencies
 
 
-
-def track(detections):
+def tracks(detections):
+    '''Process a sequence of lists of detections, per ping'''
+    # iterator?  yielding tracks as they are closed
     pass
+
+
+def mkdet(fields):
+    return Detection(pingno=fields[0], freq=fields[3], range=fields[4], theta=fields[5], phi=fields[6], rank=0)
+
+
+import csv
+from itertools import groupby
+
+
+def pingid(a, b):
+    return a[0] == b[0]
+
+
+if __name__ == '__main__':
+    with open('DetectedSingleTargets(in).csv', 'r') as f:
+        r = csv.reader(f, delimiter='\t')
+        for k, rows in groupby(map(mkdet, r), key=lambda x: x.pingno):
+            print('Ping:', k)
+            for k2, rows2 in groupby(rows, key=lambda x: x.freq):
+                print('Ping:', k, 'Freq:', k2)
+                for row in rows2: print(row)
+                print()
+            print()
