@@ -37,7 +37,7 @@ class Detection:
         pass
 
 
-def delta_pings(det1, det2, uncertainty=1):
+def detection_similarity(det1, det2, uncertainty=1):
     '''Distance between detections in pings with given time difference'''
     d_theta = det1.theta - det2.theta
     d_phi = det1.phi - det2.phi
@@ -46,6 +46,15 @@ def delta_pings(det1, det2, uncertainty=1):
     # one if perfect match (all zero), towards zero if deviation is too large
     # uncertainty less than one means the distribution is wider but lower
     return sqrt(uncertainty) * d_rank * exp(- (d_range**2/range_sigma**2 + d_theta**2/angle_sigma**2 + d_phi**2/angle_sigma**2) * uncertainty)
+
+
+def detection_max_similarity(detlist1, detlist2, uncertainty=1):
+    res = 0
+    for d1 in detlist1:
+        for d2 in detlist2:
+            sim = detection_similarity(d1, d2, uncertainty)
+            if sim > res: res = sim
+    return res
 
 
 def mkdet(fields):
@@ -59,13 +68,31 @@ def mkdet(fields):
 def link_det(dets1, dets2):
     '''Find optimal pairing'''
     # calc matrix and return list of multi-dets
-    pass
+    ndets1, ndets2 = len(dets1), len(dets2)
+    mx = np.zeros((ndets1, ndets2))
+    # todo: optimize by searching in a window?
+    for t in range(ndets1):
+        for d in range(ndets2):
+            mx[t, d] = detection_max_similarity(dets1[t], dets2[d])
+    ind1, ind2 = linear_sum_assignment(mx, maximize=True)
+
+    # Todo: minimum threshold
+    # Todo: add unmatched singletons
+
+    return [dets1[ind1[i]] + dets2[ind2[i]] for i in range(len(ind1))]
 
 
 def genmdet(dets):
     '''Group across frequencies from one ping.'''
-    # iterate link_det, by number of detections
-    pass
+    # input is an iterator of detections from one ping
+    acc = None
+    for f, ds in groupby(dets, key=lambda x: x.freq):
+        d1 = [[d] for d in ds]  # wrap in lists
+        if not acc:
+            acc = d1
+        else:
+            acc = link_det(acc, d1)
+    return acc
 
 
 # ############### Tracking across time ########################
@@ -141,9 +168,16 @@ if __name__ == '__main__':
         next(r, None)  # skip header
         for k, ds in groupby(map(mkdet, r), key=lambda x: x.pingno):
             print('Ping:', k)
+            for d in genmdet(ds):
+                for x in d:
+                    print(x)
+                print()
             for k2, ds2 in groupby(ds, key=lambda x: x.freq):
+                
                 print('Ping:', k, 'Freq:', k2)
                 for det in ds2:
                     if det.range < 12 and det.range > 11: print(det)
                 print()
             print()
+
+            
