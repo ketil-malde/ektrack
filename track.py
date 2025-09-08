@@ -78,16 +78,20 @@ def link_det(dets1, dets2, threshold=0.00001):
             mx[t, d] = detection_max_similarity(dets1[t], dets2[d])
     ind1, ind2 = linear_sum_assignment(mx, maximize=True)
 
-    # Todo: add unmatched singletons
-
     res = []
+    d1s = [dets1[i] for i in ind1]
+    d2s = [dets2[i] for i in ind2]
+    d1rest = [dets1[i] for i in range(len(dets1)) if i not in ind1]
+    d2rest = [dets2[i] for i in range(len(dets2)) if i not in ind2]
     for i in range(len(ind1)):
         if mx[ind1[i], ind2[i]] > threshold:
-            res.append(dets1[ind1[i]] + dets2[ind2[i]])
+            res.append(d1s[i] + d2s[i])
         else:
-            res.append(dets1[ind1[i]])
-            res.append(dets2[ind2[i]])
-    return res
+            res.append(d1s[i])
+            res.append(d2s[i])
+
+    res = res + d1rest + d2rest
+    return sorted(res, key=lambda x: x[0].range)
 
 
 def genmdet(dets):
