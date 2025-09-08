@@ -135,24 +135,12 @@ class Tracks:
     offsets: {}  # frequency -> location
 
 
-def predict1(track, frequency):
-    '''Predict next detection based on track history'''
-    detection = None
-    uncertainty = None
-    return detection, uncertainty
-
-
-def delta_chans(tr1, tr2):
-    '''Distance between tracks in different frequencies'''
-    pass
-
-
 def track1(tracks, detections):
     # link tracks to detections (high confidence)
     ntracks, ndets = len(tracks), len(detections)
     mx = np.empty((ntracks,ndets))
     for t in range(ntracks):
-        t_pred = predict(tracks[t])
+        t_pred = tracks[t].predict()
         for d in range(ndets):
             mx[t, d] = delta_pings(t_pred, d)
     tind, dind = linear_sum_assignment(mx, maximize=True)
@@ -164,13 +152,6 @@ def track1(tracks, detections):
     # link across frequencies
 
 
-def tracks(detections):
-    '''Process a sequence of lists of detections, per ping'''
-    # iterator?  yielding tracks as they are closed
-    pass
-
-
-
 import csv
 from itertools import groupby
 
@@ -178,18 +159,22 @@ if __name__ == '__main__':
     with open('DetectedSingleTargets(in).csv', 'r') as f:
         r = csv.reader(f, delimiter='\t')
         next(r, None)  # skip header
+
+        # Match detections between transducers
+        ps = []
         for k, ds in groupby(map(mkdet, r), key=lambda x: x.pingno):
             print('Ping:', k)
-            for d in genmdet(ds):
+            p0 = genmdet(ds)  # NB: destructive on ds
+            for d in p0:
                 for x in d:
                     print(x)
                 print()
-            for k2, ds2 in groupby(ds, key=lambda x: x.freq):
-                
-                print('Ping:', k, 'Freq:', k2)
-                for det in ds2:
-                    if det.range < 12 and det.range > 11: print(det)
-                print()
-            print()
+            ps.append(p0)
 
-            
+        # build tracks from ps
+        tracks = []
+        for p in ps:
+            tracks = track1(tracks, p)
+
+        for t in tracks:
+            print(t)
