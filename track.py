@@ -45,6 +45,8 @@ def detection_similarity(det1, det2, uncertainty=1):
     d_rank = rank_scale/(rank_scale*2 + det1.rank) + rank_scale/(rank_scale*2 + det2.rank)
     # one if perfect match (all zero), towards zero if deviation is too large
     # uncertainty less than one means the distribution is wider but lower
+
+    # todo: downweigh the angles a lot!
     return sqrt(uncertainty) * d_rank * exp(- (d_range**2/range_sigma**2 + d_theta**2/angle_sigma**2 + d_phi**2/angle_sigma**2) * uncertainty)
 
 
@@ -65,7 +67,7 @@ def mkdet(fields):
 
 # ########### Tracking across frequencies ######################
 
-def link_det(dets1, dets2):
+def link_det(dets1, dets2, threshold=0.00001):
     '''Find optimal pairing'''
     # calc matrix and return list of multi-dets
     ndets1, ndets2 = len(dets1), len(dets2)
@@ -76,10 +78,16 @@ def link_det(dets1, dets2):
             mx[t, d] = detection_max_similarity(dets1[t], dets2[d])
     ind1, ind2 = linear_sum_assignment(mx, maximize=True)
 
-    # Todo: minimum threshold
     # Todo: add unmatched singletons
 
-    return [dets1[ind1[i]] + dets2[ind2[i]] for i in range(len(ind1))]
+    res = []
+    for i in range(len(ind1)):
+        if mx[ind1[i], ind2[i]] > threshold:
+            res.append(dets1[ind1[i]] + dets2[ind2[i]])
+        else:
+            res.append(dets1[ind1[i]])
+            res.append(dets2[ind2[i]])
+    return res
 
 
 def genmdet(dets):
