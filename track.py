@@ -25,7 +25,7 @@ class Detection:
 
     def __str__(self):
         x0, y0, z0 = self.location()
-        return f'D {self.pingno} {self.freq //1000:3d}kHz  Rng {self.range:5.2f} Th {self.theta:5.2f} Phi {self.phi:5.2f}\t[{x0:5.2f}, {y0:5.2f}, {z0:6.2f}]'
+        return f'D {self.pingno} {self.freq // 1000:3d}kHz  Rng {self.range:5.2f} Th {self.theta:5.2f} Phi {self.phi:5.2f}\t[{x0:5.2f}, {y0:5.2f}, {z0:6.2f}]'
 
     def location(self):
         '''Convert to 3D coordinates'''
@@ -44,12 +44,12 @@ def detection_similarity(det1, det2, uncertainty=1):
     d_theta = det1.theta - det2.theta
     d_phi = det1.phi - det2.phi
     d_range = det1.range - det2.range
-    d_rank = rank_scale/(rank_scale*2 + det1.rank) + rank_scale/(rank_scale*2 + det2.rank)
+    d_rank = rank_scale / (rank_scale * 2 + det1.rank) + rank_scale / (rank_scale * 2 + det2.rank)
     # one if perfect match (all zero), towards zero if deviation is too large
     # uncertainty less than one means the distribution is wider but lower
 
     # todo: downweigh the angles a lot!
-    return sqrt(uncertainty) * d_rank * exp(- (d_range**2/range_sigma**2 + d_theta**2/angle_sigma**2 + d_phi**2/angle_sigma**2) * uncertainty)
+    return sqrt(uncertainty) * d_rank * exp(- (d_range**2 / range_sigma**2 + d_theta**2 / angle_sigma**2 + d_phi**2 / angle_sigma**2) * uncertainty)
 
 
 def detection_max_similarity(detlist1, detlist2, uncertainty=1):
