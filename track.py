@@ -2,13 +2,15 @@ from dataclasses import dataclass
 from scipy.optimize import linear_sum_assignment
 from math import exp, sin, sqrt
 import numpy as np
+import sys
 
 # 5 cm discrepancy reduces score with 1/e
 range_sigma = 0.05
-# angle of 1 degree give same penalty as above
-angle_sigma = 1
+# angle of 2 degrees give same penalty as above
+angle_sigma = 2
 rank_scale = 10  # ranks count 0.5, 0.45, 0.42, 0.38...
 
+debug = False
 PI = 3.1415926
 
 
@@ -23,7 +25,7 @@ class Detection:
 
     def __str__(self):
         x0, y0, z0 = self.location()
-        return f'D {self.pingno} {self.freq //1000}kHz  Rng {self.range:5.2f} Th {self.theta:5.2f} Phi {self.phi:5.2f}\t[{x0:5.2f}, {y0:5.2f}, {z0:6.2f}]'
+        return f'D {self.pingno} {self.freq //1000:3d}kHz  Rng {self.range:5.2f} Th {self.theta:5.2f} Phi {self.phi:5.2f}\t[{x0:5.2f}, {y0:5.2f}, {z0:6.2f}]'
 
     def location(self):
         '''Convert to 3D coordinates'''
@@ -67,7 +69,7 @@ def mkdet(fields):
 
 # ########### Tracking across frequencies ######################
 
-def link_det(dets1, dets2, threshold=0.00001):
+def link_det(dets1, dets2, threshold=0.0005):
     '''Find optimal pairing'''
     # calc matrix and return list of multi-dets
     ndets1, ndets2 = len(dets1), len(dets2)
@@ -87,6 +89,8 @@ def link_det(dets1, dets2, threshold=0.00001):
         if mx[ind1[i], ind2[i]] > threshold:
             res.append(d1s[i] + d2s[i])
         else:
+            if debug and mx[ind1[i], ind2[i]] > threshold/10:
+                print('DEBUG:\n', d1s[i], '\n', d2s[i], '\n', mx[ind1[i], ind2[i]], file=sys.stderr)
             res.append(d1s[i])
             res.append(d2s[i])
 
