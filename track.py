@@ -113,19 +113,59 @@ def genmdet(dets):
 
 # ############### Tracking across time ########################
 
+# Sigh.  Time to make location a class?
+def avgtuple(tups):
+    return (sum([a[0] for a in tups]) / len(tups),
+            sum([a[1] for a in tups]) / len(tups),
+            sum([a[2] for a in tups]) / len(tups))
+
+def difftuple(tup1, tup2):
+    return (tup1[0] - tup2[0], tup1[1] - tup2[1], tup1[2] - tup2[2])
+
 @dataclass
 class Track:
     # also track adjustments?
     detections: [Detection]
 
-    def predict(self, curtime):
-        '''predict next detection from a track'''
+    # for predictions
+    velocity: (float, float, float)
+    certainty: float
+
+    def __init__(self, det):
+        self.detections = [det]
+        self.velocity = (0, 0, 0)
+        self.certainty = 0
+
+    def _delta_loc(self):
+        '''Estimate movement from penultimate to last detection'''
+        # todo need to interpolate time as well
+        d1 = {d.freq: d for d in self.detections[-1]}
+        d2 = {d.freq: d for d in self.detections[-2]}
+        # accumulate location diffs
+        acc = []
+        for f in set(d1.keys + d2.keys):
+            if f in d1.keys and f in d2.keys: acc.append((d1[f].location(), d2[f].location()))
+        # and calculate average
+        return avgtuple(acc)
+
+    def predict(self, time=None, avgvel=(0, 0, 0), avgrot=(0, 0)):
+        '''Update velocity and certainty and predict next detection from a track'''
         if len(self.detections) == 1:
-            '''Predict avg of other tracks? with high uncertainty'''
-            pass
-        else:  # at least two observations
-            '''Linear extrapolation, less uncertainty'''
-            pass
+            # Predict avg of other tracks? with high certainty
+            self.certainty = 0
+            self.velocity = avgvel
+        if len(self.detections) >= 2:
+            # Linear extrapolation, high certainty
+            delta = self._delta_loc()
+            if len(self.detections) == 2:
+                self.certainty = 0
+                self.velocity = delta
+            else:
+                # Linear extrapolation of last two with estimated certainty from third
+                self.certainty = 0.5 * self.certainty + 0.5 * abs(delta - self.velocity)
+                self.velocity = delta
+        avgloc = avgtuple([d.location() for d in self.detections[-1]])
+        return avgloc + self.velocity
 
     def summarize(self):
         '''Generate a finished track output'''
@@ -139,21 +179,32 @@ class Tracks:
     offsets: {}  # frequency -> location
 
 
+def similarity_locations(l1, l2):
+    dist2 = (l1[0] - l2[0])**2 + (l1[1] - l2[1])**2 + (l1[2] - l2[2])**2
+    return exp(-dist2 / 0.01)
+
+
 def track1(tracks, detections):
     # link tracks to detections (high confidence)
     ntracks, ndets = len(tracks), len(detections)
-    mx = np.empty((ntracks,ndets))
+    mx = np.empty((ntracks, ndets))
     for t in range(ntracks):
         t_pred = tracks[t].predict()
         for d in range(ndets):
-            mx[t, d] = delta_pings(t_pred, d)
+            mx[t, d] = similarity_locations(t_pred, avgtuple([x.location() for x in detections[d]]))
     tind, dind = linear_sum_assignment(mx, maximize=True)
-    
-    # adjust for average movement
 
-    # predict locations (include older tracks) and recalculate
+    # todo: adjust for average movement (include MRU)
+    # todo: predict locations (include older tracks) and recalculate    print(tind)
 
-    # link across frequencies
+    updatedtracks = []
+
+    # add unmatched detections
+    drest = [detections[i] for i in range(len(detections)) if i not in dind]
+    trest = [tracks[i] for i in range(len(tracks)) if i not in tind]
+    # retire finished tracks, and yield them, add the rest
+
+    return updatedtracks + trest + [Track(d) for d in drest]
 
 
 import csv
