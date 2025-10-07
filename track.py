@@ -115,12 +115,20 @@ def genmdet(dets):
 
 # Sigh.  Time to make location a class?
 def avgtuple(tups):
-    return (sum([a[0] for a in tups]) / len(tups),
-            sum([a[1] for a in tups]) / len(tups),
-            sum([a[2] for a in tups]) / len(tups))
+    if tups: return (sum([a[0] for a in tups]) / len(tups),
+                     sum([a[1] for a in tups]) / len(tups),
+                     sum([a[2] for a in tups]) / len(tups))
+    else: return (0, 0, 0)
 
 def difftuple(tup1, tup2):
     return (tup1[0] - tup2[0], tup1[1] - tup2[1], tup1[2] - tup2[2])
+
+def addtuple(tup1, tup2):
+    return (tup1[0] + tup2[0], tup1[1] + tup2[1], tup1[2] + tup2[2])
+
+def abstuple(tup1):
+    return sqrt(tup1[0]**2 + tup1[1]**2 + tup1[2]**2)
+
 
 @dataclass
 class Track:
@@ -138,18 +146,24 @@ class Track:
 
     def _delta_loc(self):
         '''Estimate movement from penultimate to last detection'''
+        print(f'Delta_loc: len={len(self.detections)}')
         # todo need to interpolate time as well
         d1 = {d.freq: d for d in self.detections[-1]}
+        print('***', d1)
         d2 = {d.freq: d for d in self.detections[-2]}
+        print('***', d2)
         # accumulate location diffs
         acc = []
-        for f in set(d1.keys + d2.keys):
-            if f in d1.keys and f in d2.keys: acc.append((d1[f].location(), d2[f].location()))
+        for f in set(list(d1.keys()) + list(d2.keys())):
+            if f in d1.keys() and f in d2.keys(): acc.append(difftuple(d1[f].location(), d2[f].location()))
         # and calculate average
+        print('Delta_loc acc:', acc)
         return avgtuple(acc)
 
     def predict(self, time=None, avgvel=(0, 0, 0), avgrot=(0, 0)):
         '''Update velocity and certainty and predict next detection from a track'''
+        assert isinstance(avgvel, tuple)
+        assert isinstance(avgrot, tuple)
         if len(self.detections) == 1:
             # Predict avg of other tracks? with high certainty
             self.certainty = 0
@@ -157,15 +171,16 @@ class Track:
         if len(self.detections) >= 2:
             # Linear extrapolation, high certainty
             delta = self._delta_loc()
+            print(f'Called predicte with {self.detections} and {delta}')
             if len(self.detections) == 2:
                 self.certainty = 0
                 self.velocity = delta
             else:
                 # Linear extrapolation of last two with estimated certainty from third
-                self.certainty = 0.5 * self.certainty + 0.5 * abs(delta - self.velocity)
+                self.certainty = 0.5 * self.certainty + 0.5 * abstuple(difftuple(delta,self.velocity))
                 self.velocity = delta
         avgloc = avgtuple([d.location() for d in self.detections[-1]])
-        return avgloc + self.velocity
+        return addtuple(avgloc, self.velocity)
 
     def summarize(self):
         '''Generate a finished track output'''
@@ -184,7 +199,7 @@ def similarity_locations(l1, l2):
     return exp(-dist2 / 0.01)
 
 
-def track1(tracks, detections):
+def track1(tracks, detections, threshold=0):
     # link tracks to detections (high confidence)
     ntracks, ndets = len(tracks), len(detections)
     mx = np.empty((ntracks, ndets))
@@ -198,11 +213,25 @@ def track1(tracks, detections):
     # todo: predict locations (include older tracks) and recalculate    print(tind)
 
     updatedtracks = []
+    tmatch = [tracks[i] for i in tind]
+    dmatch = [detections[i] for i in dind]
+    for i in range(len(tind)):
+        if mx[tind[i], dind[i]] > threshold:
+            t = tmatch[i]
+            t.detections.append(dmatch[i])
+            updatedtracks.append(t)
+        else:
+            print('Not below threshold:', mx[tind[i], dind[i]])
+            updatedtracks.append(tmatch[i])
+            updatedtracks.append(Track(dmatch[i]))
 
     # add unmatched detections
-    drest = [detections[i] for i in range(len(detections)) if i not in dind]
     trest = [tracks[i] for i in range(len(tracks)) if i not in tind]
-    # retire finished tracks, and yield them, add the rest
+    print('Trest:', trest)
+    drest = [detections[i] for i in range(len(detections)) if i not in dind]
+    print('Drest:', drest)
+    
+    # TODO: retire finished tracks, and yield them, add the rest
 
     return updatedtracks + trest + [Track(d) for d in drest]
 
@@ -212,6 +241,7 @@ from itertools import groupby
 
 if __name__ == '__main__':
     with open('DetectedSingleTargets(in).csv', 'r') as f:
+    # with open('minitest.csv', 'r') as f:
         r = csv.reader(f, delimiter='\t')
         next(r, None)  # skip header
 
@@ -230,6 +260,11 @@ if __name__ == '__main__':
         tracks = []
         for p in ps:
             tracks = track1(tracks, p)
-
-        for t in tracks:
-            print(t)
+            print('--------------------------------------------------')
+            for t in tracks:
+                print('Track:')
+                for d in t.detections:
+                    for e in d:
+                        print(e)
+                    print()
+                print()
