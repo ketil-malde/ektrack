@@ -4,6 +4,8 @@ from math import exp, sin, sqrt
 import numpy as np
 import sys
 
+from typing import List, Tuple, Dict, Any
+
 # 5 cm discrepancy reduces score with 1/e
 range_sigma = 0.05
 # angle of 2 degrees give same penalty as above
@@ -27,8 +29,8 @@ class Detection:
         x0, y0, z0 = self.location()
         return f'D {self.pingno} {self.freq // 1000:3d}kHz  Rng {self.range:5.2f} Th {self.theta:5.2f} Phi {self.phi:5.2f}\t[{x0:5.2f}, {y0:5.2f}, {z0:6.2f}]'
 
-    def location(self):
-        # todo: use Yngve's formula
+    def location(self, mru=None):
+        # todo: use Yngve's formula: https://github.com/CRIMAC-WP4-Machine-learning/CRIMAC-coordinate-transformation/blob/main/transformCoordinates.py
         '''Convert to 3D coordinates'''
         x = self.range * sin(PI * self.theta / 180)
         y = self.range * sin(PI * self.phi / 180)
@@ -134,10 +136,10 @@ def abstuple(tup1):
 @dataclass
 class Track:
     # also track adjustments?
-    detections: [Detection]
+    detections: List[Detection]
 
     # for predictions
-    velocity: (float, float, float)
+    velocity: Tuple[float, float, float]
     certainty: float
 
     def __init__(self, det):
@@ -185,9 +187,9 @@ class Track:
 
 @dataclass
 class Tracks:
-    track: [Track]
-    mru: []  # roll, pitch, heave?
-    offsets: {}  # frequency -> location
+    track: List[Track]
+    mru: List[Any]  # roll, pitch, heave?
+    offsets: Dict[Any, Any]     # frequency -> location
 
 
 def similarity_locations(l1, l2):
@@ -206,7 +208,7 @@ def track1(tracks, detections, threshold=1e-9):
     tind, dind = linear_sum_assignment(mx, maximize=True)
 
     # todo: adjust for average movement (include MRU)
-    # todo: predict locations (include older tracks) and recalculate    print(tind)
+    # todo: predict locations (include older tracks) and recalculate
 
     updatedtracks = []
     tmatch = [tracks[i] for i in tind]
@@ -255,11 +257,12 @@ if __name__ == '__main__':
             ps.append(p0)
 
         # build tracks from ps
-        tracks = []
+        tracks: list[Track] = []
         for p in ps:
             tracks = track1(tracks, p)
 
-        sorted_tracks = sorted(tracks, key=lambda x: x.detections[0][0].range)
+        def sortidx(t): return t.detections[0][0].range  # workaround for mypy
+        sorted_tracks = sorted(tracks, key=sortidx)
 
         print('--------------------------------------------------')
         for t in sorted_tracks:
