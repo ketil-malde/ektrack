@@ -1,4 +1,4 @@
-from prominence import prominence
+from netcdf2dets import readnetcdf, calc_prom_arrays, detections
 import track
 
 def main():

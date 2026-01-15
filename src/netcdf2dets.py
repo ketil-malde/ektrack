@@ -1,7 +1,6 @@
-from NetCDF4 import Dataset
+from netCDF4 import Dataset
 import xarray as xr
 import numpy as np
-from Exceptions import RunTimeError
 from sys import argv
 
 from prominence import prominence
@@ -19,24 +18,26 @@ def readnetcdf(ncfile):
         d = xr.open_dataset(ncfile, engine='netcdf4', group=g)
         wbtlabel = d.attrs['channel_id']
         if 'pulse_compressed_re' in d:
-            # FM data
+            # FM data - calc mean magnitude across sectors (quadrants)
             backscatter = abs(d['pulse_compressed_re'] + d['pulse_compressed_im'] * 1j).mean(dim='sector')
         elif 'sv' in d:
-            # CW data (no pulse comression)
+            # CW data (no pulse comression, keep sv (should be TS, no?))
             backscatter = d['sv']
         else:
-            raise RunTimeError(f'Neither FM nor CW data in {ncfile}/{wbtlabel}?')
+            raise RunTimeError(f'Neither FM nor CW data in {ncfile}/{wbtlabel}?')  # noqa - flake doesn't know about RTE
 
         theta = d['angle_alongship']
         phi = d['angle_athwartship']
 
-        res[g] = xr.Dataset({'backscatter': backscatter, 'theta': theta, 'phi': phi})
+        res[g] = xr.Dataset({'backscatter': backscatter, 'theta': theta, 'phi': phi}).assign_attrs(wbtlabel=wbtlabel)
 
     return res
 
 def calc_prom_arrays(channels):
     """Calculate the prominence array from backscatter"""
     for g in channels.keys():
+        print('Processing:', g)
+        # This is slow - use JAX or PyTorch?
         channels[g]['prominence'] = xr.DataArray(
             np.apply_along_axis(prominence, axis=1, arr=np.log(channels[g]['backscatter'])),
             dims=["ping_time", "range"],
@@ -44,7 +45,7 @@ def calc_prom_arrays(channels):
 
 def detections(pchannels):
     """Calculate detections from prominence and channel data"""
-    pass
+    return None
 
 
 if __name__ == '__main__':
@@ -55,4 +56,5 @@ if __name__ == '__main__':
     calc_prom_arrays(ch)
     print(ch)
     # compute the detections
-    detections(ch)
+    ds = detections(ch)
+    print(ds)
