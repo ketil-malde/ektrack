@@ -4,7 +4,7 @@ testvalues = [1, 2, 3, 2, 4, 1]
 
 def prominence(values):
     vpeaks = np.logical_and(values >= np.append(values[1:], [-9999]), values > np.append([-9999], values[:-1]))
-    vtroughs = np.logical_and(values <= np.append(values[1:], [9999]), values <= np.append([9999], values[:-1]))
+    vtroughs = np.logical_and(values <= np.append(values[1:], [9999]), values < np.append([9999], values[:-1]))
 
     # These two are very expensive - replace with numpy method?
     def is_peak(i):
@@ -43,6 +43,7 @@ def prominence(values):
         # print('maxdepth before', j, 'was', maxdepth)
         return float(maxdepth)  # necessary to not produce list of 1-d vectors?
 
+    # This is still slow
     def find_proms(direction):
         myrange = range(len(values)) if direction == 'left' else reversed(range(len(values)))
         peaks = []
@@ -54,7 +55,7 @@ def prominence(values):
             # print('  peaks:', peaks)
             # print('  troughs:', troughs)
 
-            if is_peak(i):
+            if vpeaks[i]:  # is_peak(i):
                 while peaks:
                     j = peaks.pop()
                     if values[j] > values[i]:
@@ -77,7 +78,7 @@ def prominence(values):
                     else:
                         print('Error: direction can\'t be', direction)
                         exit(-1)
-            if is_trough(i):
+            if vtroughs[i]:  # is_trough(i):
                 while troughs:
                     j = troughs.pop()
                     if values[j] < values[i]:
