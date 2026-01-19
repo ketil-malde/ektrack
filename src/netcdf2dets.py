@@ -45,7 +45,11 @@ def calc_prom_arrays(channels):
 
 def detections(pchannels):
     """Calculate detections from prominence and channel data"""
-    return None
+    nonzero_indices_per_col = {}
+    for g in pchannels.keys():
+        gchan = pchannels[g]['prominence']
+        nonzero_indices_per_col[g] = [gchan[v, :].values.nonzero()[0] for v in range(gchan.shape[0])]
+    return nonzero_indices_per_col
 
 
 if __name__ == '__main__':
@@ -56,5 +60,6 @@ if __name__ == '__main__':
     calc_prom_arrays(ch)
     print(ch)
     # compute the detections
-    ds = detections(ch)
-    print(ds)
+    for g, ds in detections(ch).items():
+        print(g)
+        print(ds[75])
