@@ -45,11 +45,25 @@ def calc_prom_arrays(channels):
 
 def detections(pchannels):
     """Calculate detections from prominence and channel data"""
-    nonzero_indices_per_col = {}
+    ret = {}
     for g in pchannels.keys():
-        gchan = pchannels[g]['prominence']
-        nonzero_indices_per_col[g] = [gchan[v, :].values.nonzero()[0] for v in range(gchan.shape[0])]
-    return nonzero_indices_per_col
+        dss = []
+        gchan = pchannels[g]
+        nz_idx_per_col = [gchan['prominence'][v, :].values.nonzero()[0] for v in range(gchan['prominence'].shape[0])]
+        for ping in range(0, 10):  # range(len(nz_idx_per_col)):
+            ds = []
+            for i in nz_idx_per_col[ping]:
+                val = gchan['prominence'][ping][i].item()
+                if val > 2.0:
+                    rng = gchan['range'][i].item()
+                    if 6.0 < rng < 8.0:
+                        ptm = gchan['ping_time'][ping].item()
+                        theta = gchan['theta'][ping][i].item()
+                        phi = gchan['phi'][ping][i].item()
+                        ds.append(f"time={ptm}\tR={rng:.2f}\ttheta={theta:.2f}\tphi={phi:.2f}\tval={val:.2f}")
+            dss.append(ds)
+        ret[g] = dss
+    return ret
 
 
 if __name__ == '__main__':
@@ -61,5 +75,5 @@ if __name__ == '__main__':
     print(ch)
     # compute the detections
     for g, ds in detections(ch).items():
-        print(g)
-        print(ds[75])
+        print(g, ch[g].wbtlabel, len(ds[7]))
+        for s in ds[7]: print(s)
