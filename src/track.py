@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from scipy.optimize import linear_sum_assignment
 from math import exp, sin, sqrt
+from datetime import datetime
 import numpy as np
 import sys
 
@@ -19,6 +20,7 @@ PI = 3.1415926
 @dataclass
 class Detection:
     pingno: int
+    time: int
     freq: str
     range: float  # meters
     theta: float  # degrees
@@ -27,7 +29,7 @@ class Detection:
 
     def __str__(self):
         x0, y0, z0 = self.location()
-        return f'D {self.pingno} {self.freq // 1000:3d}kHz  Rng {self.range:5.2f} Th {self.theta:5.2f} Phi {self.phi:5.2f}\t[{x0:5.2f}, {y0:5.2f}, {z0:6.2f}]'
+        return f'D {self.pingno} {self.time} {self.freq // 1000:3d}kHz  Rng {self.range:5.2f} Th {self.theta:5.2f} Phi {self.phi:5.2f}\t[{x0:5.2f}, {y0:5.2f}, {z0:6.2f}]'
 
     def location(self, mru=None):
         # todo: use Yngve's formula: https://github.com/CRIMAC-WP4-Machine-learning/CRIMAC-coordinate-transformation/blob/main/transformCoordinates.py
@@ -66,7 +68,10 @@ def detection_max_similarity(detlist1, detlist2, uncertainty=1):
 
 def mkdet(fields):
     '''Parse a line of CSV input into a detection.'''
-    return Detection(pingno=int(fields[0]), freq=int(fields[3]), range=float(fields[4]),
+    def parsetime(s):
+        x = datetime.strptime(s, "%M:%S.%f")
+        return int((x.minute * 60 + x.second) * 1e6 + x.microsecond)
+    return Detection(pingno=int(fields[0]), time=parsetime(fields[1]), freq=int(fields[3]), range=float(fields[4]),
                      theta=float(fields[5]), phi=float(fields[6]), rank=0)
 
 
