@@ -1,7 +1,9 @@
 import numpy as np
+import numba
 
 testvalues = [1, 2, 3, 2, 4, 1]
 
+# @numba.njit
 def prominence(values):
     vpeaks = np.logical_and(values >= np.append(values[1:], [-9999]), values > np.append([-9999], values[:-1]))
     vtroughs = np.logical_and(values <= np.append(values[1:], [9999]), values < np.append([9999], values[:-1]))
@@ -22,7 +24,7 @@ def prominence(values):
         return after and before
 
     # find the max depth going back to at most j
-    def find_max_depth(j, troughs, direction):
+    def find_max_depth(j: int, troughs: list[int], direction: str):
         # print('fmd:', j, direction)
         c = len(troughs) - 1
         maxdepth = float(troughs[c])
@@ -44,8 +46,8 @@ def prominence(values):
         return float(maxdepth)  # necessary to not produce list of 1-d vectors?
 
     # This is still slow
-    def find_proms(direction):
-        myrange = range(len(values)) if direction == 'left' else reversed(range(len(values)))
+    def find_proms(direction: str) -> list[int]:
+        myrange = range(len(values)) if direction == 'left' else range(len(values) - 1, -1, -1)
         peaks = []
         troughs = []
         proms = np.zeros(len(values))
