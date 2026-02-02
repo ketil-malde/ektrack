@@ -48,31 +48,6 @@ def calc_prom_arrays(channels):
             dims=["ping_time", "range"],
             coords=[channels[g]['ping_time'], channels[g]['range']])
 
-def detections(pchannels):
-    """Calculate detections from prominence and channel data"""
-    def dets(mych):
-        nz_idx = [mych['prominence'][v, :].values.nonzero()[0] for v in range(mych['prominence'].shape[0])]
-        dss = []
-        for ping in range(0, 10):  # range(len(nz_idx_per_col)):
-            ds = []
-            for i in nz_idx[ping]:
-                val = mych['prominence'][ping][i].item()
-                if val > 2.0:
-                    rng = mych['range'][i].item()
-                    if 6.0 < rng < 8.0:
-                        ptm = mych['ping_time'][ping].item()
-                        theta = mych['theta'][ping][i].item()
-                        phi = mych['phi'][ping][i].item()
-                        ds.append(Detection(pingno=ping, time=ptm, freq=0, range=rng, theta=theta, phi=phi, rank=0))
-                        # ds.append(ping, ptm, 0, rng, theta, phi, 0)
-                        # ds.append(f"time={ptm}\tR={rng:.2f}\ttheta={theta:.2f}\tphi={phi:.2f}\tval={val:.2f}")
-            dss.append(ds)
-        return dss
-
-    ret = {}
-    for g, mych in pchannels.items():
-        ret[g] = dets(mych)
-    return ret
 
 def dets2(pch, p):
     res = {}
