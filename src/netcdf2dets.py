@@ -48,28 +48,19 @@ def calc_prom_arrays(channels):
             dims=["ping_time", "range"],
             coords=[channels[g]['ping_time'], channels[g]['range']])
 
-def dets2(pch, p, minprom=0, maxrng=0, minrng=99999):
+def detections(pch, p, minprom=0, maxrng=999999, minrng=0):
     res = {}
     for g, mych in pch.items():
+        res[g] = []
         prom = mych['prominence'][p]
         rng = mych['range']
         time = mych['ping_time'][p]
         theta = mych['theta'][p]
         phi = mych['phi'][p]
-
         idx = (prom > minprom) & (rng > minrng) & (rng < maxrng)
-        res[g] = (time, prom[idx], rng[idx], theta[idx], phi[idx])
+        for pr, r, th, ph in zip(prom[idx], rng[idx], theta[idx], phi[idx]):
+            res[g].append(Detection(p, time.item(), int(ch[g].frequency), r.item(), th.item(), ph.item(), pr.item()))
     return res
-
-def ds2dets(ds):
-    gres = {}
-    for g, dets in ds.items():
-        res = []
-        t, ps, rngs, ths, phs = dets
-        for p, r, th, ph in zip(ps, rngs, ths, phs):
-            res.append(Detection(-1, t.item(), 0, r.item(), th.item(), ph.item(), 0))
-        gres[g] = res
-    return gres
 
 
 # ../data/D20230803-T230004.nc <- salmon plus seabed?
@@ -78,13 +69,15 @@ def ds2dets(ds):
 if __name__ == '__main__':
     # read args[1]
     ch = readnetcdf(argv[1])
-    print(ch)
-    # calculate prominence
     calc_prom_arrays(ch)
-    print(ch)
+
     # compute the detections
-    ds = dets2(ch, 7, minprom=2.0, maxrng=8.0, minrng=6.0)
-    dsd = ds2dets(ds)
-    for g, s in dsd.items():
-        print(f'{g}: "{ch[g].wbtlabel}" {int(ch[g].frequency)}kHz, type={ch[g].pulsetype} len={len(ds[g])}')
+    prange = len(ch[next(iter(ch))]['ping_time'])
+    dsd = [detections(ch, i, minprom=2.0) for i in range(prange)]
+
+    # Print results
+    # for dss in dsd:
+    dss = dsd[7]
+    for g, s in dss.items():
+        print(f'{g}: "{ch[g].wbtlabel}" {int(ch[g].frequency)}kHz, type={ch[g].pulsetype} len={len(dss[g])}')
         for x in s: print(x)
