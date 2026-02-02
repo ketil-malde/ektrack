@@ -43,7 +43,6 @@ def calc_prom_arrays(channels):
     """Calculate the prominence array from backscatter"""
     for g in channels.keys():
         print('Processing:', g)
-        # This is slow - use JAX or PyTorch?
         channels[g]['prominence'] = xr.DataArray(
             np.apply_along_axis(prominence, axis=1, arr=np.log(channels[g]['backscatter'])),
             dims=["ping_time", "range"],
@@ -51,25 +50,28 @@ def calc_prom_arrays(channels):
 
 def detections(pchannels):
     """Calculate detections from prominence and channel data"""
-    ret = {}
-    for g in pchannels.keys():
+    def dets(mych):
+        nz_idx = [mych['prominence'][v, :].values.nonzero()[0] for v in range(mych['prominence'].shape[0])]
         dss = []
-        gchan = pchannels[g]
-        nz_idx_per_col = [gchan['prominence'][v, :].values.nonzero()[0] for v in range(gchan['prominence'].shape[0])]
         for ping in range(0, 10):  # range(len(nz_idx_per_col)):
             ds = []
-            for i in nz_idx_per_col[ping]:
-                val = gchan['prominence'][ping][i].item()
+            for i in nz_idx[ping]:
+                val = mych['prominence'][ping][i].item()
                 if val > 2.0:
-                    rng = gchan['range'][i].item()
+                    rng = mych['range'][i].item()
                     if 6.0 < rng < 8.0:
-                        ptm = gchan['ping_time'][ping].item()
-                        theta = gchan['theta'][ping][i].item()
-                        phi = gchan['phi'][ping][i].item()
+                        ptm = mych['ping_time'][ping].item()
+                        theta = mych['theta'][ping][i].item()
+                        phi = mych['phi'][ping][i].item()
                         ds.append(Detection(pingno=ping, time=ptm, freq=0, range=rng, theta=theta, phi=phi, rank=0))
+                        # ds.append(ping, ptm, 0, rng, theta, phi, 0)
                         # ds.append(f"time={ptm}\tR={rng:.2f}\ttheta={theta:.2f}\tphi={phi:.2f}\tval={val:.2f}")
             dss.append(ds)
-        ret[g] = dss
+        return dss
+
+    ret = {}
+    for g, mych in pchannels.items():
+        ret[g] = dets(mych)
     return ret
 
 
