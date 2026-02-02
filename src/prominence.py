@@ -3,7 +3,7 @@ import numba
 
 testvalues = [1, 2, 3, 2, 4, 1]
 
-# @numba.njit
+@numba.njit
 def prominence(values):
     vpeaks = np.logical_and(values >= np.append(values[1:], [-9999]), values > np.append([-9999], values[:-1]))
     vtroughs = np.logical_and(values <= np.append(values[1:], [9999]), values < np.append([9999], values[:-1]))
