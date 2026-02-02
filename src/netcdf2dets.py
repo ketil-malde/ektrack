@@ -48,8 +48,7 @@ def calc_prom_arrays(channels):
             dims=["ping_time", "range"],
             coords=[channels[g]['ping_time'], channels[g]['range']])
 
-
-def dets2(pch, p):
+def dets2(pch, p, minprom=0, maxrng=0, minrng=99999):
     res = {}
     for g, mych in pch.items():
         prom = mych['prominence'][p]
@@ -58,7 +57,7 @@ def dets2(pch, p):
         theta = mych['theta'][p]
         phi = mych['phi'][p]
 
-        idx = (prom > 2.0) & (rng > 6.0) & (rng < 8.0)
+        idx = (prom > minprom) & (rng > minrng) & (rng < maxrng)
         res[g] = (time, prom[idx], rng[idx], theta[idx], phi[idx])
     return res
 
@@ -84,7 +83,7 @@ if __name__ == '__main__':
     calc_prom_arrays(ch)
     print(ch)
     # compute the detections
-    ds = dets2(ch, 7)
+    ds = dets2(ch, 7, minprom=2.0, maxrng=8.0, minrng=6.0)
     dsd = ds2dets(ds)
     for g, s in dsd.items():
         print(f'{g}: "{ch[g].wbtlabel}" {int(ch[g].frequency)}kHz, type={ch[g].pulsetype} len={len(ds[g])}')
