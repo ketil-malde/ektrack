@@ -74,11 +74,33 @@ def detections(pchannels):
         ret[g] = dets(mych)
     return ret
 
+def dets2(pch, p):
+    res = {}
+    for g, mych in pch.items():
+        prom = mych['prominence'][p]
+        rng = mych['range']
+        time = mych['ping_time'][p]
+        theta = mych['theta'][p]
+        phi = mych['phi'][p]
+
+        idx = (prom > 2.0) & (rng > 6.0) & (rng < 8.0)
+        res[g] = (time, prom[idx], rng[idx], theta[idx], phi[idx])
+    return res
+
+def ds2dets(ds):
+    gres = {}
+    for g, dets in ds.items():
+        res = []
+        t, ps, rngs, ths, phs = dets
+        for p, r, th, ph in zip(ps, rngs, ths, phs):
+            res.append(Detection(-1, t.item(), 0, r.item(), th.item(), ph.item(), 0))
+        gres[g] = res
+    return gres
+
 
 # ../data/D20230803-T230004.nc <- salmon plus seabed?
 # Generate the NetCDF by running raw2pc.py from CRIMAC-FM-testdatapaper on D20230803-T230004.raw
 # ..except that generates four outputs: pc_{1..4}, none of them matching this file.
-
 if __name__ == '__main__':
     # read args[1]
     ch = readnetcdf(argv[1])
@@ -87,6 +109,8 @@ if __name__ == '__main__':
     calc_prom_arrays(ch)
     print(ch)
     # compute the detections
-    for g, ds in detections(ch).items():
-        print(f'{g}: "{ch[g].wbtlabel}" {int(ch[g].frequency)}kHz, type={ch[g].pulsetype} len={len(ds[7])}')
-        for s in ds[7]: print(s)
+    ds = dets2(ch, 7)
+    dsd = ds2dets(ds)
+    for g, s in dsd.items():
+        print(f'{g}: "{ch[g].wbtlabel}" {int(ch[g].frequency)}kHz, type={ch[g].pulsetype} len={len(ds[g])}')
+        for x in s: print(x)
