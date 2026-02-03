@@ -20,4 +20,4 @@ profile-detect:
     {{python}} -m cProfile src/netcdf2dets.py {{file_nc}} > OUT_d.prof
 
 profile-track:
-    time {{python}} -m cProfile src/track.py {{file_nc}} > OUT_t.profile
+    time {{python}} -m cProfile src/track.py {{file_nc}} > OUT_t.prof
