@@ -4,6 +4,9 @@ file_nc := '../data/D20230803-T230004.nc'
 _all:
     @echo "Try justjus --list?"
 
+test:
+    time {{python}} src/main.py {{file_nc}}
+
 test-detect:
     time {{python}} src/netcdf2dets.py {{file_nc}}
 

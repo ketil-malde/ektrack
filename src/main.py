@@ -30,7 +30,7 @@ def main(infile, pings):
 
 
 if __name__ == "__main__":
-    ts = main(sys.argv[1], range(100, 110))
+    ts = main(sys.argv[1], range(100, 200))
     for t in ts:
         print('Track:')
         for d in t.detections:

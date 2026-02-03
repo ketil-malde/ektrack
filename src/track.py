@@ -97,8 +97,8 @@ def link_det(dets1, dets2, threshold=0.0005):
         if mx[ind1[i], ind2[i]] > threshold:
             res.append(d1s[i] + d2s[i])
         else:
-            if debug and mx[ind1[i], ind2[i]] > threshold/10:
-                print('DEBUG:\n', d1s[i], '\n', d2s[i], '\n', mx[ind1[i], ind2[i]], file=sys.stderr)
+            # if debug and mx[ind1[i], ind2[i]] > threshold/10:
+            #     print('DEBUG:\n', d1s[i], '\n', d2s[i], '\n', mx[ind1[i], ind2[i]], file=sys.stderr)
             res.append(d1s[i])
             res.append(d2s[i])
 
@@ -224,7 +224,7 @@ def track1(tracks, detections, threshold=1e-9):
             t.detections.append(dmatch[i])
             updatedtracks.append(t)
         else:
-            print('Not below threshold:', mx[tind[i], dind[i]], dmatch[i], tmatch[i])
+            # print('Not below threshold:', mx[tind[i], dind[i]], dmatch[i], tmatch[i])
             updatedtracks.append(tmatch[i])
             updatedtracks.append(Track(dmatch[i]))
 
