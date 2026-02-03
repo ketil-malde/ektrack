@@ -25,11 +25,11 @@ class Detection:
     range: float  # meters
     theta: float  # degrees
     phi: float
-    rank: int     # zero is strongest detection, higher is worse
+    rank: int
 
     def __str__(self):
         x0, y0, z0 = self.location()
-        return f'D {self.pingno} {self.time} {self.freq // 1000:3d}kHz  Rng {self.range:5.2f} Th {self.theta:5.2f} Phi {self.phi:5.2f}\t[{x0:5.2f}, {y0:5.2f}, {z0:6.2f}]'
+        return f'D {self.pingno} {self.time} {self.freq // 1000:3d}kHz Score: {self.rank:5.2f}\tR:{self.range:6.2f}  \u0398:{self.theta:4.1f}  \u0278:{self.phi:4.1f}\tXYZ: [{x0:5.2f}, {y0:5.2f}, {z0:6.2f}]'
 
     def location(self, mru=None):
         # todo: use Yngve's formula: https://github.com/CRIMAC-WP4-Machine-learning/CRIMAC-coordinate-transformation/blob/main/transformCoordinates.py
