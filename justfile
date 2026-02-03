@@ -7,6 +7,9 @@ _all:
 test:
     time {{python}} src/main.py {{file_nc}}
 
+profile:
+    time {{python}} -m cProfile src/main.py {{file_nc}} > OUT.prof
+
 test-detect:
     time {{python}} src/netcdf2dets.py {{file_nc}}
 
