@@ -106,19 +106,6 @@ def link_det(dets1, dets2, threshold=0.0005):
     return sorted(res, key=lambda x: x[0].range)
 
 
-def genmdet(dets):
-    '''Group across frequencies from one ping.'''
-    # input is an iterator of detections from one ping
-    acc = None
-    for f, ds in groupby(dets, key=lambda x: x.freq):
-        d1 = [[d] for d in ds]  # wrap in lists
-        if not acc:
-            acc = d1
-        else:
-            acc = link_det(acc, d1)
-    return acc
-
-
 # ############### Tracking across time ########################
 
 # Sigh.  Time to make location a class?
@@ -202,7 +189,8 @@ def similarity_locations(l1, l2):
     return exp(-dist2 / 0.01)
 
 
-def track1(tracks, detections, threshold=1e-9):
+# What type is detections here? List of detections grouped by frequency?
+def track1(tracks: List[Track], detections: List[List[Detection]], threshold: float = 1e-9) -> List[Track]:
     # link tracks to detections (high confidence)
     ntracks, ndets = len(tracks), len(detections)
     mx = np.empty((ntracks, ndets))
@@ -237,15 +225,26 @@ def track1(tracks, detections, threshold=1e-9):
     return updatedtracks + trest + [Track(d) for d in drest]
 
 
+# ############################################################################
 import csv
 from itertools import groupby
 
-# detfile = 'DetectedSingleTargets(in).csv'
-# detfile = 'minitest.csv'
-detfile = 'detections_short.csv'
+def _genmdet(dets):  # iterator(Detection) -> list(list(Detection))
+    '''Group across frequencies from one ping.'''
+    # input is an iterator of detections from one ping
+    acc = None
+    for f, ds in groupby(dets, key=lambda x: x.freq):
+        d1 = [[d] for d in ds]  # wrap in lists
+        if not acc:
+            acc = d1
+        else:
+            acc = link_det(acc, d1)
+    return acc
 
-
-if __name__ == '__main__':
+def _readcsvfile():
+    # detfile = 'DetectedSingleTargets(in).csv'
+    # detfile = 'minitest.csv'
+    detfile = 'detections_short.csv'
     with open(detfile, 'r') as f:
         r = csv.reader(f, delimiter='\t')
         next(r, None)  # skip header
@@ -254,26 +253,31 @@ if __name__ == '__main__':
         ps = []
         for k, ds in groupby(map(mkdet, r), key=lambda x: x.pingno):
             print('Ping:', k)
-            p0 = genmdet(ds)  # NB: destructive on ds
+            # for d in ds: print(d) # what the FLYING FUCK?!
+            p0 = _genmdet(ds)  # NB: destructive on ds
             for d in p0:
                 for x in d:
                     print(x)
                 print()
             ps.append(p0)
+    return ps
 
-        # build tracks from ps
-        tracks: list[Track] = []
-        for p in ps:
-            tracks = track1(tracks, p)
 
-        def sortidx(t): return t.detections[0][0].range  # workaround for mypy
-        sorted_tracks = sorted(tracks, key=sortidx)
+if __name__ == '__main__':
+    ps = _readcsvfile()
+    # build tracks from ps
+    tracks: list[Track] = []
+    for p in ps:
+        tracks = track1(tracks, p)
 
-        print('--------------------------------------------------')
-        for t in sorted_tracks:
-            print('Track:')
-            for d in t.detections:
-                for e in d:
-                    print(e)
-                print()
+    def sortidx(t): return t.detections[0][0].range  # workaround for mypy
+    sorted_tracks = sorted(tracks, key=sortidx)
+
+    print('--------------------------------------------------')
+    for t in sorted_tracks:
+        print('Track:')
+        for d in t.detections:
+            for e in d:
+                print(e)
             print()
+        print()
