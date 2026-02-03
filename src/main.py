@@ -11,9 +11,7 @@ def main(infile, pings):
     # 2. calculate prominences
     calc_prom_arrays(ch)
 
-    # 3. detections
-
-    # 4. run tracking
+    # 3. run tracking
     tracks = []
     for p in pings:
         dets = detections(ch, p, minprom=2.0, minrng=6.0, maxrng=8.0)

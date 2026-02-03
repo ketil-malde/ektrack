@@ -56,15 +56,15 @@ def detection_similarity(det1, det2, uncertainty=1):
     # todo: downweigh the angles a lot!
     return sqrt(uncertainty) * d_rank * exp(- (d_range**2 / range_sigma**2 + d_theta**2 / angle_sigma**2 + d_phi**2 / angle_sigma**2) * uncertainty)
 
-
 def detection_max_similarity(detlist1, detlist2, uncertainty=1):
+    '''Max similiarity over all pairs of detections'''
+    # shouldn't this be for fixed frequencies?
     res = 0
     for d1 in detlist1:
         for d2 in detlist2:
             sim = detection_similarity(d1, d2, uncertainty)
             if sim > res: res = sim
     return res
-
 
 def mkdet(fields):
     '''Parse a line of CSV input into a detection.'''
@@ -73,7 +73,6 @@ def mkdet(fields):
         return int((x.minute * 60 + x.second) * 1e6 + x.microsecond)
     return Detection(pingno=int(fields[0]), time=parsetime(fields[1]), freq=int(fields[3]), range=float(fields[4]),
                      theta=float(fields[5]), phi=float(fields[6]), rank=0)
-
 
 # ########### Tracking across frequencies ######################
 
@@ -105,7 +104,6 @@ def link_det(dets1, dets2, threshold=0.0005):
     res = res + d1rest + d2rest
     return sorted(res, key=lambda x: x[0].range)
 
-
 # ############### Tracking across time ########################
 
 # Sigh.  Time to make location a class?
@@ -123,7 +121,6 @@ def addtuple(tup1, tup2):
 
 def abstuple(tup1):
     return sqrt(tup1[0]**2 + tup1[1]**2 + tup1[2]**2)
-
 
 @dataclass
 class Track:
@@ -188,7 +185,6 @@ def similarity_locations(l1, l2):
     dist2 = (l1[0] - l2[0])**2 + (l1[1] - l2[1])**2 + (l1[2] - l2[2])**2
     return exp(-dist2 / 0.01)
 
-
 # What type is detections here? List of detections grouped by frequency?
 def track1(tracks: List[Track], detections: List[List[Detection]], threshold: float = 1e-9) -> List[Track]:
     # link tracks to detections (high confidence)
@@ -225,7 +221,7 @@ def track1(tracks: List[Track], detections: List[List[Detection]], threshold: fl
     return updatedtracks + trest + [Track(d) for d in drest]
 
 
-# ############################################################################
+# ### Testing #########################################################################
 import csv
 from itertools import groupby
 
