@@ -49,6 +49,7 @@ def calc_prom_arrays(channels):
             coords=[channels[g]['ping_time'], channels[g]['range']])
 
 def detections(pch, p, minprom=0, maxrng=999999, minrng=0):
+    """Calculate detections using prominence threshold"""
     res = {}
     for g, mych in pch.items():
         res[g] = []
@@ -59,7 +60,7 @@ def detections(pch, p, minprom=0, maxrng=999999, minrng=0):
         phi = mych['phi'][p]
         idx = (prom > minprom) & (rng > minrng) & (rng < maxrng)
         for pr, r, th, ph in zip(prom[idx], rng[idx], theta[idx], phi[idx]):
-            res[g].append(Detection(p, time.item(), int(ch[g].frequency), r.item(), th.item(), ph.item(), pr.item()))
+            res[g].append(Detection(p, time.item(), int(pch[g].frequency), r.item(), th.item(), ph.item(), pr.item()))
     return res
 
 
