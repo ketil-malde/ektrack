@@ -4,7 +4,6 @@ from track import track1, link_det
 import sys
 
 def main(infile, pings):
-    print("Hello from ektrack2!")
     # 1. read NetCDF file
     ch = readnetcdf(infile)
 
