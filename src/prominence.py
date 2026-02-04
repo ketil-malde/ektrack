@@ -96,4 +96,4 @@ def prominence(values):
     # print('forward: (', type(p_fwd), ')', p_fwd)
     # print('reverse: (', type(p_rev), ')', p_rev)
     # return [min(a, b) for (a, b) in zip(p_fwd, p_rev)]
-    return np.minimum(p_fwd, p_rev)
+    return np.maximum(0, np.minimum(p_fwd, p_rev))
