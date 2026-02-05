@@ -28,9 +28,8 @@ class Detection:
     rank: float
 
     def __str__(self):
-        x0, y0, z0 = self.location()
         ts, tus = divmod(self.time // 1000, 1000000)
-        return f'D {self.pingno} {ts}.{tus:06} {self.freq // 1000:3d}kHz Score: {self.rank:5.2f}\tR:{self.range:6.2f}  \u0398:{self.theta:4.1f}  \u0278:{self.phi:4.1f}\tXYZ: [{x0:5.2f}, {y0:5.2f}, {z0:6.2f}]'
+        return f'D {self.pingno} {ts}.{tus:06} {self.freq // 1000:3d}kHz Score: {self.rank:5.2f}\tR:{self.range:6.2f}  \u0398:{self.theta:4.1f}  \u0278:{self.phi:4.1f}\tXYZ: {self.location()}'
 
     def location(self, mru=None):
         # todo: use Yngve's formula: https://github.com/CRIMAC-WP4-Machine-learning/CRIMAC-coordinate-transformation/blob/main/transformCoordinates.py
@@ -38,7 +37,7 @@ class Detection:
         x = self.range * sin(PI * self.theta / 180)
         y = self.range * sin(PI * self.phi / 180)
         z = sqrt(self.range * self.range - x * x - y * y)
-        return x, y, z
+        return Location(x, y, z)
 
     def from_location(self, x, y, z):
         '''Create from 3D coordinates'''
@@ -50,7 +49,7 @@ def detection_similarity(det1, det2, uncertainty=1):
     d_theta = det1.theta - det2.theta
     d_phi = det1.phi - det2.phi
     d_range = det1.range - det2.range
-    d_rank = rank_scale / (rank_scale * 2 + det1.rank) + rank_scale / (rank_scale * 2 + det2.rank)
+    d_rank = 1  # rank_scale / (rank_scale * 2 + det1.rank) + rank_scale / (rank_scale * 2 + det2.rank)
     # one if perfect match (all zero), towards zero if deviation is too large
     # uncertainty less than one means the distribution is wider but lower
 
@@ -59,7 +58,7 @@ def detection_similarity(det1, det2, uncertainty=1):
 
 def detection_max_similarity(detlist1, detlist2, uncertainty=1):
     '''Max similiarity over all pairs of detections'''
-    # shouldn't this be for fixed frequencies?
+    # shouldn't this be for fixed frequencies?  Or weighted by frequency equality/similarity?
     res = 0
     for d1 in detlist1:
         for d2 in detlist2:
@@ -107,21 +106,35 @@ def link_det(dets1, dets2, threshold=0.0005):
 
 # ############### Tracking across time ########################
 
-# Sigh.  Time to make location a class?
-def avgtuple(tups):
-    if tups: return (sum([a[0] for a in tups]) / len(tups),
-                     sum([a[1] for a in tups]) / len(tups),
-                     sum([a[2] for a in tups]) / len(tups))
-    else: return (0, 0, 0)
 
-def difftuple(tup1, tup2):
-    return (tup1[0] - tup2[0], tup1[1] - tup2[1], tup1[2] - tup2[2])
+@dataclass
+class Location:
+    x: float
+    y: float
+    z: float
 
-def addtuple(tup1, tup2):
-    return (tup1[0] + tup2[0], tup1[1] + tup2[1], tup1[2] + tup2[2])
+    def __sub__(self, other): return Location(self.x - other.x, self.y - other.y, self.z - other.z)
 
-def abstuple(tup1):
-    return sqrt(tup1[0]**2 + tup1[1]**2 + tup1[2]**2)
+    def __add__(self, other):
+        return Location(self.x + other.x, self.y + other.y, self.z + other.z)
+
+    def __radd__(self, other):
+        if other == 0:
+            return self
+        else:
+            return self.__add__(other)
+
+    def __str__(self): return f'[{self.x:05.2}, {self.y:05.2}, {self.z:06.2}]'
+    def magnitude2(self): return self.x**2 + self.y**2 + self.z**2
+    def scale(self, scalar): return Location(self.x * scalar, self.y * scalar, self.z * scalar)
+
+def avgloc(locs):
+    if locs:
+        print(locs)
+        s = sum(locs)
+        return s.scale(1 / len(locs))
+    else:
+        return Location(0, 0, 0)
 
 @dataclass
 class Track:
@@ -134,7 +147,7 @@ class Track:
 
     def __init__(self, det):
         self.detections = [det]
-        self.velocity = (0, 0, 0)
+        self.velocity = Location(0, 0, 0)
         self.certainty = 0
 
     def _delta_loc(self):
@@ -145,13 +158,13 @@ class Track:
         # accumulate location diffs
         acc = []
         for f in set(list(d1.keys()) + list(d2.keys())):
-            if f in d1.keys() and f in d2.keys(): acc.append(difftuple(d1[f].location(), d2[f].location()))
+            if f in d1.keys() and f in d2.keys(): acc.append(d1[f].location() - d2[f].location())
         # and calculate average
-        return avgtuple(acc)
+        return avgloc(acc)
 
-    def predict(self, time=None, avgvel=(0, 0, 0), avgrot=(0, 0)):
+    def predict(self, time=None, avgvel=Location(0, 0, 0), avgrot=(0, 0)):
         '''Update velocity and certainty and predict next detection from a track'''
-        assert isinstance(avgvel, tuple)
+        # ssert isinstance(avgvel, tuple)
         assert isinstance(avgrot, tuple)
         if len(self.detections) == 1:
             # Predict avg of other tracks? with high certainty
@@ -165,10 +178,10 @@ class Track:
                 self.velocity = delta
             else:
                 # Linear extrapolation of last two with estimated certainty from third
-                self.certainty = 0.5 * self.certainty + 0.5 * abstuple(difftuple(delta,self.velocity))
+                self.certainty = 0.5 * self.certainty + 0.5 * sqrt((delta - self.velocity).magnitude2())
                 self.velocity = delta
-        avgloc = avgtuple([d.location() for d in self.detections[-1]])
-        return addtuple(avgloc, self.velocity)
+        myavgloc = avgloc([d.location() for d in self.detections[-1]])
+        return myavgloc + self.velocity
 
     def summarize(self):
         '''Generate a finished track output'''
@@ -183,7 +196,7 @@ class Tracks:
 
 
 def similarity_locations(l1, l2):
-    dist2 = (l1[0] - l2[0])**2 + (l1[1] - l2[1])**2 + (l1[2] - l2[2])**2
+    dist2 = (l1 - l2).magnitude2()
     return exp(-dist2 / 0.01)
 
 # What type is detections here? List of detections grouped by frequency?
@@ -194,7 +207,7 @@ def track1(tracks: List[Track], detections: List[List[Detection]], threshold: fl
     for t in range(ntracks):
         t_pred = tracks[t].predict()
         for d in range(ndets):
-            mx[t, d] = similarity_locations(t_pred, avgtuple([x.location() for x in detections[d]]))
+            mx[t, d] = similarity_locations(t_pred, avgloc([x.location() for x in detections[d]]))
     tind, dind = linear_sum_assignment(mx, maximize=True)
 
     # todo: adjust for average movement (include MRU)
