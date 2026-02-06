@@ -3,7 +3,6 @@ from scipy.optimize import linear_sum_assignment
 from math import exp, sin, sqrt
 from datetime import datetime
 import numpy as np
-import sys
 
 from typing import List, Tuple, Dict, Any
 
@@ -130,7 +129,6 @@ class Location:
 
 def avgloc(locs):
     if locs:
-        print(locs)
         s = sum(locs)
         return s.scale(1 / len(locs))
     else:
