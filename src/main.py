@@ -35,7 +35,7 @@ def plot(ch, track=[]):
         plt.tight_layout()
         plt.show()
 
-def regrid(ch):
+def regrid(ch, brighten=1):
     for g in ch.keys():
         f = ch[g].frequency
         print(f)
@@ -52,7 +52,7 @@ def regrid(ch):
         else:
             pass
 
-    def normalize_01(da): return (da - da.min()) / (da.max() - da.min() + eps)
+    def normalize_01(da): return brighten * (da - da.min()) / (da.max() - da.min() + eps)
 
     f38k = normalize_01(f38k)
     f120k = normalize_01(f120k.interp(range=f38k.range, method='linear'))
