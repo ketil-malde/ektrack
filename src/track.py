@@ -124,7 +124,7 @@ class Location:
         else:
             return self.__add__(other)
 
-    def __str__(self): return f'[{self.x:05.2}, {self.y:05.2}, {self.z:06.2}]'
+    def __str__(self): return f'[{self.x:5.2f}, {self.y:5.2f}, {self.z:6.2f}]'
     def magnitude2(self): return self.x**2 + self.y**2 + self.z**2
     def scale(self, scalar): return Location(self.x * scalar, self.y * scalar, self.z * scalar)
 
