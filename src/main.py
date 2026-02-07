@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 import matplotlib.colors as mcolors
 import numpy as np
 import xarray as xr
-import xarray_regrid
+from datetime import datetime, timezone
 
 import sys
 
@@ -15,7 +15,7 @@ def load(infile):
     calc_prom_arrays(ch)
     return ch
 
-def plot(ch, track=[]):
+def plot(ch, tracks=[]):
     '''Generate plots of PC data and prominence'''
     for g, x in ch.items():
         fig, (ax1, ax2) = plt.subplots(ncols=2, figsize=(10, 5), sharex=True, sharey=True)
@@ -25,12 +25,27 @@ def plot(ch, track=[]):
         log_norm = mcolors.LogNorm(vmin=b.min().item(), vmax=b.max().item())
         b.T.plot.imshow(ax=ax1, norm=log_norm)
         ax1.set_title("Backscatter")
+        ax1.set_aspect("auto")
         x['prominence'].T.plot.imshow(ax=ax2, cmap='viridis')
         ax2.set_title("Prominence")
+        ax2.set_aspect("auto")
 
-        # TODO: Plot tracks
+        # Date handling in Python is a stinking mess
+        def t_pings(tr): return [datetime.fromtimestamp(d[0].time / 1e9, tz=timezone.utc) for d in tr]
+        def t_ranges(tr): return [d[0].location().z for d in tr]
 
-        # Finish up 
+        # Plot tracks
+        if tracks:
+            for t in tracks:
+                if len(t.detections) > 1:
+                    tdata = xr.DataArray(t_ranges(t.detections),
+                                         coords={'time': t_pings(t.detections)},
+                                         dims=['time'])
+                    tdata.plot(ax=ax1, color='red')
+                    # print(t_pings(t.detections))
+                    # ax1.plot(t_ranges(t.detections), t_pings(t.detections))
+
+        # Finish up
         fig.suptitle(x.wbtlabel)
         plt.tight_layout()
         plt.show()
@@ -58,9 +73,7 @@ def regrid(ch, brighten=1):
     f120k = normalize_01(f120k.interp(range=f38k.range, method='linear'))
     f200k = normalize_01(f200k.interp(range=f38k.range, method='linear'))
 
-    ds = xr.concat([f38k, f120k, f200k], dim='color')
-    ds.T.plot.imshow(rgb='color', add_colorbar=False)
-    plt.show()
+    return xr.concat([f38k, f120k, f200k], dim='color')
 
 def track(ch, pings, minprom=1.0, minrng=6.0, maxrng=8.0):
     '''Run tracking, iterating over pings'''
@@ -91,6 +104,10 @@ def showtracks(ts):
 if __name__ == "__main__":
     print('Reading netCDF file: ' + sys.argv[1])
     ds = load(sys.argv[1])
-    regrid(ds)
-    # ts = track(ds, range(90, 105), minprom=2.5)
-    # showtracks(ts)
+    # rds = regrid(ds)
+    # rds.T.plot.imshow(rgb='color', add_colorbar=False)
+    # plt.show()
+
+    ts = track(ds, range(100, 130), minprom=2, minrng=8, maxrng=15)
+    showtracks(ts[:10])
+    plot(ds, ts[:10])
