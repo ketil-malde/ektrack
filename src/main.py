@@ -41,7 +41,7 @@ def plot(ch, tracks=[]):
                     tdata = xr.DataArray(t_ranges(t.detections),
                                          coords={'time': t_pings(t.detections)},
                                          dims=['time'])
-                    tdata.plot(ax=ax1, color='red')
+                    tdata.plot(ax=ax1, color='red', marker='+')
                     # print(t_pings(t.detections))
                     # ax1.plot(t_ranges(t.detections), t_pings(t.detections))
 
@@ -53,16 +53,12 @@ def plot(ch, tracks=[]):
 def regrid(ch, brighten=1):
     for g in ch.keys():
         f = ch[g].frequency
-        print(f)
         eps = 1e-10
         if f == 38000:
-            print('38k')
             f38k = np.log10(ch[g]['backscatter'] + eps)
         elif f == 120000:
-            print('120k')
             f120k = np.log10(ch[g]['backscatter'] + eps)
         elif f == 200000:
-            print('200k')
             f200k = np.log10(ch[g]['backscatter'] + eps)
         else:
             pass

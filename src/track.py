@@ -193,9 +193,10 @@ class Tracks:
     offsets: Dict[Any, Any]     # frequency -> location
 
 
-def similarity_locations(l1, l2):
-    dist2 = (l1 - l2).magnitude2()
-    return exp(-dist2 / 0.01)
+def similarity_locations(l_pred, l_obs, var=0.01):
+    '''Score similarity between a predicted and an observed location'''
+    dist2 = (l_pred - l_obs).magnitude2()
+    return exp(-dist2 / var)
 
 # What type is detections here? List of detections grouped by frequency?
 def track1(tracks: List[Track], detections: List[List[Detection]], threshold: float = 1e-9) -> List[Track]:
