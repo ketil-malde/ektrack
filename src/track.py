@@ -1,11 +1,13 @@
+from __future__ import annotations
+from typing import List, Tuple, Dict, Any, Optional, Union  # Iterable, Callable
 from dataclasses import dataclass
 from scipy.optimize import linear_sum_assignment
 from math import exp, sin, sqrt
-from datetime import datetime, timezone
+from datetime import datetime
 import numpy as np
 
-from typing import List, Tuple, Dict, Any, Optional, Union, Iterable, Callable
 
+# --- Parameters ---
 # 5 cm discrepancy reduces score with 1/e
 range_sigma = 0.05
 # angle of 2 degrees give same penalty as above
@@ -57,7 +59,7 @@ class Detection:
         ts, tus = divmod(self.time // 1000, 1000000)
         return f'D {self.pingno} {ts}.{tus:06} {self.freq // 1000:3d}kHz Score: {self.score:5.2f}\tR:{self.range:6.2f}  \u0398:{self.theta:4.1f}  \u0278:{self.phi:4.1f}\tXYZ: {self.location()}'
 
-    def location(self, mru: Optional[Any] = None) -> 'Location':
+    def location(self, mru: Optional[Any] = None) -> Location:
         # todo: use Yngve's formula: https://github.com/CRIMAC-WP4-Machine-learning/CRIMAC-coordinate-transformation/blob/main/transformCoordinates.py
         '''Convert to 3D coordinates'''
         x = self.range * sin(PI * self.theta / 180)
@@ -89,7 +91,7 @@ def detection_max_similarity(detlist1: List[Detection], detlist2: List[Detection
     for d1 in detlist1:
         for d2 in detlist2:
             sim = detection_similarity(d1, d2, uncertainty)
-            if sim > res: res = float(sim) # ensure float for mypy
+            if sim > res: res = float(sim)  # ensure float for mypy
     return res
 
 def mkdet(fields):
@@ -97,7 +99,7 @@ def mkdet(fields):
     def parsetime(s):
         x = datetime.strptime(s, "%M:%S.%f")
         return int((x.minute * 60 + x.second) * 1e6 + x.microsecond)
-    return Detection(pingno=int(fields[0]), time=parsetime(fields[1]), freq=int(fields[3]), range=float(fields[4]), # type: ignore
+    return Detection(pingno=int(fields[0]), time=parsetime(fields[1]), freq=int(fields[3]), range=float(fields[4]),
                      theta=float(fields[5]), phi=float(fields[6]), score=0)
 
 def link_det(dets1: List[List[Detection]], dets2: List[List[Detection]], threshold: float = 0.0005) -> List[List[Detection]]:
@@ -271,7 +273,7 @@ def _readcsvfile():
     return ps
 
 
-if __name__ == '__main__': # type: ignore
+if __name__ == '__main__':
     ps = _readcsvfile()
     # build tracks from ps
     tracks: list[Track] = []

@@ -1,6 +1,5 @@
 from netcdf2dets import readnetcdf, calc_prom_arrays, detections
 from track import track1, link_det, Track, Detection
-from track import track1, link_det
 
 from matplotlib import pyplot as plt, colors as mcolors
 import numpy as np
