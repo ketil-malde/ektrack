@@ -1,8 +1,9 @@
 import KoronaScript as ks
 import KoronaScript.Modules as ksm
 from sys import argv
+from typing import List
 
-def raw2tracks(indir, outdir):
+def raw2tracks(indir: str, outdir: str) -> None:
         # Copied from CRIMAC-FM-testdatapaper
         ksi = ks.KoronaScript(TransducerRanges="korona/TransducerRanges.xml")
         ksi.add(ksm.EmptyPingRemoval())

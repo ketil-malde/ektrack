@@ -2,12 +2,13 @@ from netCDF4 import Dataset
 import xarray as xr
 import numpy as np
 from sys import argv
+from typing import Dict, List
 
 from prominence import prominence
 from track import Detection
 
 
-def readnetcdf(ncfile):
+def readnetcdf(ncfile: str) -> Dict[str, xr.Dataset]:
     """
     Read pulse compressed ping data from a NetCDF file, and generate a set of detections.
     Returns an xarray with (pulse-compressed for bb) backscatter and angles.
@@ -39,7 +40,7 @@ def readnetcdf(ncfile):
 
     return res
 
-def calc_prom_arrays(channels):
+def calc_prom_arrays(channels: Dict[str, xr.Dataset]) -> None:
     """Calculate the prominence array from backscatter"""
     for g in channels.keys():
         print('Processing:', g)
@@ -48,7 +49,7 @@ def calc_prom_arrays(channels):
             dims=["ping_time", "range"],
             coords=[channels[g]['ping_time'], channels[g]['range']])
 
-def detections(pch, p, minprom=0, maxrng=999999, minrng=0):
+def detections(pch: Dict[str, xr.Dataset], p: int, minprom: float = 0.0, maxrng: float = 999999.0, minrng: float = 0.0) -> Dict[str, List[Detection]]:
     """Calculate detections using prominence threshold"""
     res = {}
     for g, mych in pch.items():

@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 from scipy.optimize import linear_sum_assignment
 from math import exp, sin, sqrt
-from datetime import datetime
+from datetime import datetime, timezone
 import numpy as np
 
-from typing import List, Tuple, Dict, Any
+from typing import List, Tuple, Dict, Any, Optional, Union, Iterable, Callable
 
 # 5 cm discrepancy reduces score with 1/e
 range_sigma = 0.05
@@ -16,10 +16,10 @@ PI = 3.1415926
 
 @dataclass
 class Detection:
-    pingno: int
-    time: int
-    freq: str
-    range: float  # meters
+    pingno: int  # Current ping number
+    time: int    # Timestamp in nanoseconds (since epoch)
+    freq: int    # Frequency in Hz
+    range: float # Range in meters
     theta: float  # degrees
     phi: float
     score: float
@@ -29,6 +29,7 @@ class Detection:
         return f'D {self.pingno} {ts}.{tus:06} {self.freq // 1000:3d}kHz Score: {self.score:5.2f}\tR:{self.range:6.2f}  \u0398:{self.theta:4.1f}  \u0278:{self.phi:4.1f}\tXYZ: {self.location()}'
 
     def location(self, mru=None):
+    def location(self, mru: Optional[Any] = None) -> 'Location':
         # todo: use Yngve's formula: https://github.com/CRIMAC-WP4-Machine-learning/CRIMAC-coordinate-transformation/blob/main/transformCoordinates.py
         '''Convert to 3D coordinates'''
         x = self.range * sin(PI * self.theta / 180)
@@ -36,12 +37,12 @@ class Detection:
         z = sqrt(self.range * self.range - x * x - y * y)
         return Location(x, y, z)
 
-    def from_location(self, x, y, z):
+    def from_location(self, x: float, y: float, z: float) -> None:
         '''Create from 3D coordinates'''
         pass
 
 
-def detection_similarity(det1, det2, uncertainty=1):
+def detection_similarity(det1: Detection, det2: Detection, uncertainty: float = 1.0) -> float:
     '''Distance between detections in pings with given time difference'''
     d_theta = det1.theta - det2.theta
     d_phi = det1.phi - det2.phi
@@ -53,14 +54,14 @@ def detection_similarity(det1, det2, uncertainty=1):
     # todo: downweigh the angles a lot!
     return sqrt(uncertainty) * d_score * exp(- (d_range**2 / range_sigma**2 + d_theta**2 / angle_sigma**2 + d_phi**2 / angle_sigma**2) * uncertainty)
 
-def detection_max_similarity(detlist1, detlist2, uncertainty=1):
+def detection_max_similarity(detlist1: List[Detection], detlist2: List[Detection], uncertainty: float = 1.0) -> float:
     '''Max similiarity over all pairs of detections'''
     # shouldn't this be for fixed frequencies?  Or weighted by frequency equality/similarity?
     res = 0
     for d1 in detlist1:
         for d2 in detlist2:
             sim = detection_similarity(d1, d2, uncertainty)
-            if sim > res: res = sim
+            if sim > res: res = float(sim) # ensure float for mypy
     return res
 
 def mkdet(fields):
@@ -68,12 +69,10 @@ def mkdet(fields):
     def parsetime(s):
         x = datetime.strptime(s, "%M:%S.%f")
         return int((x.minute * 60 + x.second) * 1e6 + x.microsecond)
-    return Detection(pingno=int(fields[0]), time=parsetime(fields[1]), freq=int(fields[3]), range=float(fields[4]),
+    return Detection(pingno=int(fields[0]), time=parsetime(fields[1]), freq=int(fields[3]), range=float(fields[4]), # type: ignore
                      theta=float(fields[5]), phi=float(fields[6]), score=0)
 
-# ########### Tracking across frequencies ######################
-
-def link_det(dets1, dets2, threshold=0.0005):  # [Detection] -> [Detection] -> [[Detection]]?
+def link_det(dets1: List[List[Detection]], dets2: List[List[Detection]], threshold: float = 0.0005) -> List[List[Detection]]:
     '''Find optimal pairing'''
     # calc matrix and return list of multi-dets
     ndets1, ndets2 = len(dets1), len(dets2)
@@ -106,42 +105,42 @@ def link_det(dets1, dets2, threshold=0.0005):  # [Detection] -> [Detection] -> [
 
 @dataclass
 class Location:
-    x: float
-    y: float
-    z: float
+    x: float = 0.0
+    y: float = 0.0
+    z: float = 0.0
 
-    def __sub__(self, other): return Location(self.x - other.x, self.y - other.y, self.z - other.z)
+    def __sub__(self, other: 'Location') -> 'Location': return Location(self.x - other.x, self.y - other.y, self.z - other.z)
 
-    def __add__(self, other):
+    def __add__(self, other: 'Location') -> 'Location':
         return Location(self.x + other.x, self.y + other.y, self.z + other.z)
 
-    def __radd__(self, other):
+    def __radd__(self, other: Union[int, 'Location']) -> 'Location':
         if other == 0:
             return self
         else:
-            return self.__add__(other)
+            return self.__add__(other) # type: ignore # Other will be Location in actual use
 
     def __str__(self): return f'[{self.x:5.2f}, {self.y:5.2f}, {self.z:6.2f}]'
-    def magnitude2(self): return self.x**2 + self.y**2 + self.z**2
-    def scale(self, scalar): return Location(self.x * scalar, self.y * scalar, self.z * scalar)
+    def magnitude2(self) -> float: return self.x**2 + self.y**2 + self.z**2
+    def scale(self, scalar: float) -> 'Location': return Location(self.x * scalar, self.y * scalar, self.z * scalar)
 
-def avgloc(locs):
+def avgloc(locs: List[Location]) -> Location:
     if locs:
         s = sum(locs)
-        return s.scale(1 / len(locs))
+        return s.scale(1.0 / len(locs))
     else:
         return Location(0, 0, 0)
 
 @dataclass
 class Track:
     # also track adjustments?
-    detections: List[Detection]
+    detections: List[List[Detection]]
 
     # for predictions
-    velocity: Tuple[float, float, float]
+    velocity: Location
     certainty: float
 
-    def __init__(self, det):
+    def __init__(self, det: List[Detection]):
         self.detections = [det]
         self.velocity = Location(0, 0, 0)
         self.certainty = 0
@@ -153,14 +152,14 @@ class Track:
         d2 = {d.freq: d for d in self.detections[-2]}
         delta_t = self.detections[-1][0].time - self.detections[-2][0].time
         delta_p = self.detections[-1][0].pingno - self.detections[-2][0].pingno
-        # accumulate location diffs
-        acc = []
-        for f in set(list(d1.keys()) + list(d2.keys())):
-            if f in d1.keys() and f in d2.keys(): acc.append(d1[f].location() - d2[f].location())
+        # accumulate location diffs (type hinting for acc as List[Location])
+        acc: List[Location] = []
+        for f_key in set(list(d1.keys()) + list(d2.keys())):
+            if f_key in d1.keys() and f_key in d2.keys(): acc.append(d1[f_key].location() - d2[f_key].location())
         # and calculate average vector and ping and time delta
         return avgloc(acc), delta_t, delta_p
 
-    def predict(self, time=None, avgvel=Location(0, 0, 0), avgrot=(0, 0)):
+    def predict(self, time: Optional[int] = None, avgvel: Location = Location(0, 0, 0), avgrot: Tuple[float, float] = (0.0, 0.0)) -> Location:
         '''Update velocity and certainty and predict next detection from a track'''
         # ssert isinstance(avgvel, tuple)
         assert isinstance(avgrot, tuple)
@@ -193,7 +192,7 @@ class Tracks:
     offsets: Dict[Any, Any]     # frequency -> location
 
 
-def similarity_locations(l_pred, l_obs, var=0.01):
+def similarity_locations(l_pred: Location, l_obs: Location, var: float = 0.01) -> float:
     '''Score similarity between a predicted and an observed location'''
     dist2 = (l_pred - l_obs).magnitude2()
     return exp(-dist2 / var)
@@ -272,7 +271,7 @@ def _readcsvfile():
     return ps
 
 
-if __name__ == '__main__':
+if __name__ == '__main__': # type: ignore
     ps = _readcsvfile()
     # build tracks from ps
     tracks: list[Track] = []
@@ -280,7 +279,7 @@ if __name__ == '__main__':
         tracks = track1(tracks, p)
 
     def sortidx(t): return t.detections[0][0].range  # workaround for mypy
-    sorted_tracks = sorted(tracks, key=sortidx)
+    sorted_tracks: List[Track] = sorted(tracks, key=sortidx)
 
     print('--------------------------------------------------')
     for t in sorted_tracks:

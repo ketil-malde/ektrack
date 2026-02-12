@@ -1,21 +1,22 @@
 from netcdf2dets import readnetcdf, calc_prom_arrays, detections
+from track import track1, link_det, Track, Detection
 from track import track1, link_det
 
-from matplotlib import pyplot as plt
-import matplotlib.colors as mcolors
+from matplotlib import pyplot as plt, colors as mcolors
 import numpy as np
 import xarray as xr
 from datetime import datetime, timezone
 
 import sys
+from typing import Dict, List
 
-def load(infile):
+def load(infile: str) -> Dict[str, xr.Dataset]:
     '''Read the NetCDF file and calculate prominence'''
     ch = readnetcdf(infile)
     calc_prom_arrays(ch)
     return ch
 
-def plot(ch, tracks=[]):
+def plot(ch: Dict[str, xr.Dataset], tracks: List[Track] = []) -> None:
     '''Generate plots of PC data and prominence'''
     for g, x in ch.items():
         fig, (ax1, ax2) = plt.subplots(ncols=2, figsize=(10, 5), sharex=True, sharey=True)
@@ -31,8 +32,8 @@ def plot(ch, tracks=[]):
         ax2.set_aspect("auto")
 
         # Date handling in Python is a stinking mess
-        def t_pings(trd): return [datetime.fromtimestamp(d[0].time / 1e9, tz=timezone.utc) for d in trd]
-        def t_ranges(trd): return [d[0].location().z for d in trd]
+        def t_pings(trd: List[List[Detection]]) -> List[datetime]: return [datetime.fromtimestamp(d[0].time / 1e9, tz=timezone.utc) for d in trd]
+        def t_ranges(trd: List[List[Detection]]) -> List[float]: return [d[0].location().z for d in trd]
 
         # Plot tracks
         if tracks:
@@ -50,7 +51,7 @@ def plot(ch, tracks=[]):
         plt.tight_layout()
         plt.show()
 
-def regrid(ch, brighten=1):
+def regrid(ch: Dict[str, xr.Dataset], brighten: float = 1.0) -> xr.DataArray:
     for g in ch.keys():
         f = ch[g].frequency
         eps = 1e-10
@@ -71,7 +72,7 @@ def regrid(ch, brighten=1):
 
     return xr.concat([f38k, f120k, f200k], dim='color')
 
-def track(ch, pings, minprom=1.0, minrng=6.0, maxrng=8.0):
+def track(ch: Dict[str, xr.Dataset], pings: range, minprom: float = 1.0, minrng: float = 6.0, maxrng: float = 8.0) -> List[Track]:
     # todo: prune old tracks and maybe singletons?
     
     '''Run tracking, iterating over pings'''
@@ -90,7 +91,7 @@ def track(ch, pings, minprom=1.0, minrng=6.0, maxrng=8.0):
 
     return tracks
 
-def showtracks(ts):
+def showtracks(ts: List[Track]) -> None:
     for t in ts:
         print('Track:')
         for d in t.detections:
@@ -107,8 +108,8 @@ if __name__ == "__main__":
     # rds = regrid(ds)
     # rds.T.plot.imshow(rgb='color', add_colorbar=False)
     # plt.show()
-    ds1 = detections(ds, 100, minrng=6.0, maxrng=8, minprom=2)
-    ds2 = detections(ds, 101, minrng=6.0, maxrng=8, minprom=2)
+    ds1: Dict[str, List[Detection]] = detections(ds, 100, minrng=6.0, maxrng=8.0, minprom=2.0)
+    ds2: Dict[str, List[Detection]] = detections(ds, 101, minrng=6.0, maxrng=8.0, minprom=2.0)
     for d in [ds1, ds2]:
         for s, z in d.items():
             print(s)

@@ -1,10 +1,12 @@
 import numpy as np
 import numba
 
+from typing import List
+
 testvalues = [1, 2, 3, 2, 4, 1]
 
 @numba.njit
-def prominence(values):
+def prominence(values: np.ndarray) -> np.ndarray:
     vpeaks = np.logical_and(values >= np.append(values[1:], [-9999]), values > np.append([-9999], values[:-1]))
     vtroughs = np.logical_and(values <= np.append(values[1:], [9999]), values < np.append([9999], values[:-1]))
 
@@ -24,7 +26,7 @@ def prominence(values):
     #     return after and before
 
     # find the max depth going back to at most j
-    def find_max_depth(j: int, troughs: list[int], direction: str):
+    def find_max_depth(j: int, troughs: List[int], direction: str) -> float:
         # print('fmd:', j, direction)
         c = len(troughs) - 1
         maxdepth = float(troughs[c])
@@ -46,7 +48,7 @@ def prominence(values):
         return float(maxdepth)  # necessary to not produce list of 1-d vectors?
 
     # This is still slow
-    def find_proms(direction: str) -> list[int]:
+    def find_proms(direction: str) -> np.ndarray:
         myrange = range(len(values)) if direction == 'left' else range(len(values) - 1, -1, -1)
         peaks = []
         troughs = []
