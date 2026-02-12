@@ -73,8 +73,8 @@ if __name__ == '__main__':
     calc_prom_arrays(ch)
 
     # compute the detections
-    prange = len(ch[next(iter(ch))]['ping_time'])
-    dsd = [detections(ch, i, minprom=2.0) for i in range(prange)]
+    prange = 10  # len(ch[next(iter(ch))]['ping_time'])
+    dsd = [detections(ch, i, minprom=2.0, minrng=6.0, maxrng=8.0) for i in range(prange)]
 
     # Print results
     # for dss in dsd:

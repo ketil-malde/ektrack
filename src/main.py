@@ -31,8 +31,8 @@ def plot(ch, tracks=[]):
         ax2.set_aspect("auto")
 
         # Date handling in Python is a stinking mess
-        def t_pings(tr): return [datetime.fromtimestamp(d[0].time / 1e9, tz=timezone.utc) for d in tr]
-        def t_ranges(tr): return [d[0].location().z for d in tr]
+        def t_pings(trd): return [datetime.fromtimestamp(d[0].time / 1e9, tz=timezone.utc) for d in trd]
+        def t_ranges(trd): return [d[0].location().z for d in trd]
 
         # Plot tracks
         if tracks:
@@ -72,9 +72,12 @@ def regrid(ch, brighten=1):
     return xr.concat([f38k, f120k, f200k], dim='color')
 
 def track(ch, pings, minprom=1.0, minrng=6.0, maxrng=8.0):
+    # todo: prune old tracks and maybe singletons?
+    
     '''Run tracking, iterating over pings'''
     tracks = []
     for p in pings:
+        print(p, len(tracks), end='\r')
         dets = detections(ch, p, minprom=minprom, minrng=minrng, maxrng=maxrng)
         acc = None
         for g, ds in dets.items():
@@ -100,10 +103,35 @@ def showtracks(ts):
 if __name__ == "__main__":
     print('Reading netCDF file: ' + sys.argv[1])
     ds = load(sys.argv[1])
+
     # rds = regrid(ds)
     # rds.T.plot.imshow(rgb='color', add_colorbar=False)
     # plt.show()
+    ds1 = detections(ds, 100, minrng=6.0, maxrng=8, minprom=2)
+    ds2 = detections(ds, 101, minrng=6.0, maxrng=8, minprom=2)
+    for d in [ds1, ds2]:
+        for s, z in d.items():
+            print(s)
+            for z0 in z: print(z0)
+        print()
 
-    ts = track(ds, range(100, 130), minprom=2, minrng=8, maxrng=15)
-    showtracks(ts[:10])
-    plot(ds, ts[:10])
+    acc = None
+    for g, dd in ds1.items():
+        dd = [[d] for d in dd]
+        if not acc:
+            acc = dd
+        else:
+            acc = link_det(acc, dd)
+    for a in acc:
+        print()
+        for aa in a:
+            print(aa)
+
+    print()
+    ts = []
+    ts = track(ds, range(100, 102), minprom=2, minrng=6.0, maxrng=8.0)
+    showtracks(ts)
+
+    # exit(0)
+    ts = track(ds, range(100, 150), minprom=3, minrng=0, maxrng=99999)
+    plot(ds, ts)

@@ -9,19 +9,19 @@ def prominence(values):
     vtroughs = np.logical_and(values <= np.append(values[1:], [9999]), values < np.append([9999], values[:-1]))
 
     # These two are very expensive - replace with numpy method?
-    def is_peak(i):
-        after = True if i == len(values) - 1 else values[i + 1] <= values[i]  # note: asymmetry if equal
-        before = True if i == 0 else values[i - 1] < values[i]
-        # if after and before: print(i, 'is a peak')
-        assert (after and before) == vpeaks[i], f'i={i}, after={after}, before={before}, vpeaks[i]={vpeaks[i]}, {values[i-1:i+1]}'
-        return after and before
+    # def is_peak(i):
+    #     after = True if i == len(values) - 1 else values[i + 1] <= values[i]  # note: asymmetry if equal
+    #     before = True if i == 0 else values[i - 1] < values[i]
+    #     # if after and before: print(i, 'is a peak')
+    #     assert (after and before) == vpeaks[i], f'i={i}, after={after}, before={before}, vpeaks[i]={vpeaks[i]}, {values[i-1:i+1]}'
+    #     return after and before
 
-    def is_trough(i):
-        after = True if i == len(values) - 1 else values[i + 1] >= values[i]
-        before = True if i == 0 else values[i - 1] >= values[i]
-        # if after and before: print(i, 'is a trough')
-        assert (after and before) == vtroughs[i], f'i={i}, after={after}, before={before}, vtroughs[i]={vtroughs[i]}, {values[i-1:i+1]}'
-        return after and before
+    # def is_trough(i):
+    #     after = True if i == len(values) - 1 else values[i + 1] >= values[i]
+    #     before = True if i == 0 else values[i - 1] >= values[i]
+    #     # if after and before: print(i, 'is a trough')
+    #     assert (after and before) == vtroughs[i], f'i={i}, after={after}, before={before}, vtroughs[i]={vtroughs[i]}, {values[i-1:i+1]}'
+    #     return after and before
 
     # find the max depth going back to at most j
     def find_max_depth(j: int, troughs: list[int], direction: str):

@@ -10,11 +10,9 @@ from typing import List, Tuple, Dict, Any
 range_sigma = 0.05
 # angle of 2 degrees give same penalty as above
 angle_sigma = 2
-rank_scale = 10  # ranks count 0.5, 0.45, 0.42, 0.38...
 
 debug = False
 PI = 3.1415926
-
 
 @dataclass
 class Detection:
@@ -24,11 +22,11 @@ class Detection:
     range: float  # meters
     theta: float  # degrees
     phi: float
-    rank: float
+    score: float
 
     def __str__(self):
         ts, tus = divmod(self.time // 1000, 1000000)
-        return f'D {self.pingno} {ts}.{tus:06} {self.freq // 1000:3d}kHz Score: {self.rank:5.2f}\tR:{self.range:6.2f}  \u0398:{self.theta:4.1f}  \u0278:{self.phi:4.1f}\tXYZ: {self.location()}'
+        return f'D {self.pingno} {ts}.{tus:06} {self.freq // 1000:3d}kHz Score: {self.score:5.2f}\tR:{self.range:6.2f}  \u0398:{self.theta:4.1f}  \u0278:{self.phi:4.1f}\tXYZ: {self.location()}'
 
     def location(self, mru=None):
         # todo: use Yngve's formula: https://github.com/CRIMAC-WP4-Machine-learning/CRIMAC-coordinate-transformation/blob/main/transformCoordinates.py
@@ -48,12 +46,12 @@ def detection_similarity(det1, det2, uncertainty=1):
     d_theta = det1.theta - det2.theta
     d_phi = det1.phi - det2.phi
     d_range = det1.range - det2.range
-    d_rank = 1  # rank_scale / (rank_scale * 2 + det1.rank) + rank_scale / (rank_scale * 2 + det2.rank)
+    d_score = det1.score + det2.score
     # one if perfect match (all zero), towards zero if deviation is too large
     # uncertainty less than one means the distribution is wider but lower
 
     # todo: downweigh the angles a lot!
-    return sqrt(uncertainty) * d_rank * exp(- (d_range**2 / range_sigma**2 + d_theta**2 / angle_sigma**2 + d_phi**2 / angle_sigma**2) * uncertainty)
+    return sqrt(uncertainty) * d_score * exp(- (d_range**2 / range_sigma**2 + d_theta**2 / angle_sigma**2 + d_phi**2 / angle_sigma**2) * uncertainty)
 
 def detection_max_similarity(detlist1, detlist2, uncertainty=1):
     '''Max similiarity over all pairs of detections'''
@@ -71,11 +69,11 @@ def mkdet(fields):
         x = datetime.strptime(s, "%M:%S.%f")
         return int((x.minute * 60 + x.second) * 1e6 + x.microsecond)
     return Detection(pingno=int(fields[0]), time=parsetime(fields[1]), freq=int(fields[3]), range=float(fields[4]),
-                     theta=float(fields[5]), phi=float(fields[6]), rank=0)
+                     theta=float(fields[5]), phi=float(fields[6]), score=0)
 
 # ########### Tracking across frequencies ######################
 
-def link_det(dets1, dets2, threshold=0.0005):
+def link_det(dets1, dets2, threshold=0.0005):  # [Detection] -> [Detection] -> [[Detection]]?
     '''Find optimal pairing'''
     # calc matrix and return list of multi-dets
     ndets1, ndets2 = len(dets1), len(dets2)
@@ -153,12 +151,14 @@ class Track:
         # todo need to interpolate time as well
         d1 = {d.freq: d for d in self.detections[-1]}
         d2 = {d.freq: d for d in self.detections[-2]}
+        delta_t = self.detections[-1][0].time - self.detections[-2][0].time
+        delta_p = self.detections[-1][0].pingno - self.detections[-2][0].pingno
         # accumulate location diffs
         acc = []
         for f in set(list(d1.keys()) + list(d2.keys())):
             if f in d1.keys() and f in d2.keys(): acc.append(d1[f].location() - d2[f].location())
-        # and calculate average
-        return avgloc(acc)
+        # and calculate average vector and ping and time delta
+        return avgloc(acc), delta_t, delta_p
 
     def predict(self, time=None, avgvel=Location(0, 0, 0), avgrot=(0, 0)):
         '''Update velocity and certainty and predict next detection from a track'''
@@ -170,7 +170,7 @@ class Track:
             self.velocity = avgvel
         if len(self.detections) >= 2:
             # Linear extrapolation, high certainty
-            delta = self._delta_loc()
+            delta, dt, dp = self._delta_loc()
             if len(self.detections) == 2:
                 self.certainty = 0
                 self.velocity = delta
@@ -200,7 +200,7 @@ def similarity_locations(l_pred, l_obs, var=0.01):
 
 # What type is detections here? List of detections grouped by frequency?
 def track1(tracks: List[Track], detections: List[List[Detection]], threshold: float = 1e-9) -> List[Track]:
-    # link tracks to detections (high confidence)
+   # link tracks to detections (high confidence)
     ntracks, ndets = len(tracks), len(detections)
     mx = np.empty((ntracks, ndets))
     for t in range(ntracks):
