@@ -15,11 +15,40 @@ debug = False
 PI = 3.1415926
 
 @dataclass
+class Location:
+    x: float = 0.0
+    y: float = 0.0
+    z: float = 0.0
+
+    def __sub__(self, other: Location) -> Location: return Location(self.x - other.x, self.y - other.y, self.z - other.z)
+
+    def __add__(self, other: Location) -> Location:
+        return Location(self.x + other.x, self.y + other.y, self.z + other.z)
+
+    def __radd__(self, other: Union[int, Location]) -> Location:
+        if other == 0:
+            return self
+        else:
+            return self.__add__(other)  # type: ignore # Other will be Location in actual use
+
+    def __str__(self) -> str: return f'[{self.x:5.2f}, {self.y:5.2f}, {self.z:6.2f}]'
+    def magnitude2(self) -> float: return self.x**2 + self.y**2 + self.z**2
+    def scale(self, scalar: float) -> Location: return Location(self.x * scalar, self.y * scalar, self.z * scalar)
+
+def avgloc(locs: List[Location]) -> Location:
+    if locs:
+        s = sum(locs)
+        return s.scale(1.0 / len(locs))  # type: ignore
+    else:
+        return Location(0, 0, 0)
+
+
+@dataclass
 class Detection:
-    pingno: int  # Current ping number
-    time: int    # Timestamp in nanoseconds (since epoch)
-    freq: int    # Frequency in Hz
-    range: float # Range in meters
+    pingno: int   # Current ping number
+    time: int     # Timestamp in nanoseconds (since epoch)
+    freq: int     # Frequency in Hz
+    range: float  # Range in meters
     theta: float  # degrees
     phi: float
     score: float
@@ -101,34 +130,6 @@ def link_det(dets1: List[List[Detection]], dets2: List[List[Detection]], thresho
 
 # ############### Tracking across time ########################
 
-
-@dataclass
-class Location:
-    x: float = 0.0
-    y: float = 0.0
-    z: float = 0.0
-
-    def __sub__(self, other: 'Location') -> 'Location': return Location(self.x - other.x, self.y - other.y, self.z - other.z)
-
-    def __add__(self, other: 'Location') -> 'Location':
-        return Location(self.x + other.x, self.y + other.y, self.z + other.z)
-
-    def __radd__(self, other: Union[int, 'Location']) -> 'Location':
-        if other == 0:
-            return self
-        else:
-            return self.__add__(other) # type: ignore # Other will be Location in actual use
-
-    def __str__(self): return f'[{self.x:5.2f}, {self.y:5.2f}, {self.z:6.2f}]'
-    def magnitude2(self) -> float: return self.x**2 + self.y**2 + self.z**2
-    def scale(self, scalar: float) -> 'Location': return Location(self.x * scalar, self.y * scalar, self.z * scalar)
-
-def avgloc(locs: List[Location]) -> Location:
-    if locs:
-        s = sum(locs)
-        return s.scale(1.0 / len(locs))
-    else:
-        return Location(0, 0, 0)
 
 @dataclass
 class Track:
