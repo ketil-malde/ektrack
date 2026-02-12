@@ -28,7 +28,6 @@ class Detection:
         ts, tus = divmod(self.time // 1000, 1000000)
         return f'D {self.pingno} {ts}.{tus:06} {self.freq // 1000:3d}kHz Score: {self.score:5.2f}\tR:{self.range:6.2f}  \u0398:{self.theta:4.1f}  \u0278:{self.phi:4.1f}\tXYZ: {self.location()}'
 
-    def location(self, mru=None):
     def location(self, mru: Optional[Any] = None) -> 'Location':
         # todo: use Yngve's formula: https://github.com/CRIMAC-WP4-Machine-learning/CRIMAC-coordinate-transformation/blob/main/transformCoordinates.py
         '''Convert to 3D coordinates'''
