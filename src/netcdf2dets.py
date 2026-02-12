@@ -31,7 +31,7 @@ def readnetcdf(ncfile: str) -> Dict[str, xr.Dataset]:
             backscatter = d['sv']
             atype = 'CV'
         else:
-            raise RunTimeError(f'Neither FM nor CW data in {ncfile}/{wbtlabel}?')  # noqa - flake doesn't know about RTE
+            raise RuntimeError(f'Neither FM nor CW data in {ncfile}/{wbtlabel}?')
 
         theta = d['angle_alongship']
         phi = d['angle_athwartship']
