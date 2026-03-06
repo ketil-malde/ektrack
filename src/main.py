@@ -133,5 +133,5 @@ if __name__ == "__main__":
     showtracks(ts)
 
     # exit(0)
-    ts = track(ds, range(100, 150), minprom=3, minrng=0, maxrng=99999)
+    # ts = track(ds, range(100, 150), minprom=3, minrng=0, maxrng=99999)
     plot(ds, ts)

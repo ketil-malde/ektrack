@@ -163,7 +163,7 @@ class Track:
 
     def predict(self, time: Optional[int] = None, avgvel: Location = Location(0, 0, 0), avgrot: Tuple[float, float] = (0.0, 0.0)) -> Location:
         '''Update velocity and certainty and predict next detection from a track'''
-        # ssert isinstance(avgvel, tuple)
+        # assert isinstance(avgvel, tuple)
         assert isinstance(avgrot, tuple)
         if len(self.detections) == 1:
             # Predict avg of other tracks? with high certainty
@@ -187,11 +187,11 @@ class Track:
         pass
 
 
-@dataclass
-class Tracks:
-    track: List[Track]
-    mru: List[Any]  # roll, pitch, heave?
-    offsets: Dict[Any, Any]     # frequency -> location
+# @dataclass
+# class Tracks:
+#    track: List[Track]
+#    mru: List[Any]  # roll, pitch, heave?
+#    offsets: Dict[Any, Any]     # frequency -> location
 
 
 def similarity_locations(l_pred: Location, l_obs: Location, var: float = 0.01) -> float:
