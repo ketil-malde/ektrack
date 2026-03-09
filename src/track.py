@@ -147,45 +147,47 @@ class Track:
         self.velocity = Location(0, 0, 0)
         self.certainty = 0
 
-    def _delta_loc(self):
-        '''Estimate movement from penultimate to last detection'''
-        # todo need to interpolate time as well
-        d1 = {d.freq: d for d in self.detections[-1]}
-        d2 = {d.freq: d for d in self.detections[-2]}
-        delta_t = self.detections[-1][0].time - self.detections[-2][0].time
-        delta_p = self.detections[-1][0].pingno - self.detections[-2][0].pingno
-        # accumulate location diffs (type hinting for acc as List[Location])
-        acc: List[Location] = []
-        for f_key in set(list(d1.keys()) + list(d2.keys())):
-            if f_key in d1.keys() and f_key in d2.keys(): acc.append(d1[f_key].location() - d2[f_key].location())
-        # and calculate average vector and ping and time delta
-        return avgloc(acc), delta_t, delta_p
-
-    def predict(self, time: Optional[int] = None, avgvel: Location = Location(0, 0, 0), avgrot: Tuple[float, float] = (0.0, 0.0)) -> Location:
-        '''Update velocity and certainty and predict next detection from a track'''
-        # assert isinstance(avgvel, tuple)
-        assert isinstance(avgrot, tuple)
-        if len(self.detections) == 1:
-            # Predict avg of other tracks? with high certainty
-            self.certainty = 0
-            self.velocity = avgvel
-        if len(self.detections) >= 2:
-            # Linear extrapolation, high certainty
-            delta, dt, dp = self._delta_loc()
-            if len(self.detections) == 2:
-                self.certainty = 0
-                self.velocity = delta
-            else:
-                # Linear extrapolation of last two with estimated certainty from third
-                self.certainty = 0.5 * self.certainty + 0.5 * sqrt((delta - self.velocity).magnitude2())
-                self.velocity = delta
-        myavgloc = avgloc([d.location() for d in self.detections[-1]])
-        return myavgloc + self.velocity
-
     def summarize(self):
         '''Generate a finished track output'''
         pass
 
+
+def _delta_loc(track: Track):
+    '''Estimate movement from penultimate to last detection'''
+    # todo need to interpolate time as well
+    d1 = {d.freq: d for d in track.detections[-1]}
+    d2 = {d.freq: d for d in track.detections[-2]}
+    delta_t = track.detections[-1][0].time - track.detections[-2][0].time
+    delta_p = track.detections[-1][0].pingno - track.detections[-2][0].pingno
+    # accumulate location diffs (type hinting for acc as List[Location])
+    acc: List[Location] = []
+    for f_key in set(list(d1.keys()) + list(d2.keys())):
+        if f_key in d1.keys() and f_key in d2.keys(): acc.append(d1[f_key].location() - d2[f_key].location())
+        # and calculate average vector and ping and time delta
+    return avgloc(acc), delta_t, delta_p
+
+def predict(track: Track, time: Optional[int] = None, avgvel: Location = Location(0, 0, 0), avgrot: Tuple[float, float] = (0.0, 0.0)) -> Location:
+    '''Update velocity and certainty and predict next detection from a track'''
+    # assert isinstance(avgvel, tuple)
+    assert isinstance(avgrot, tuple)
+
+    if len(track.detections) == 1:
+        # Predict avg of other tracks? with high certainty
+        certainty = 0
+        velocity = avgvel
+    if len(track.detections) >= 2:
+        # Linear extrapolation, high certainty
+        delta, dt, dp = _delta_loc(track)
+        if len(track.detections) == 2:
+            certainty = 0
+            velocity = delta
+        else:
+            # Linear extrapolation of last two with estimated certainty from third
+            certainty = 0.5 * certainty + 0.5 * sqrt((delta - velocity).magnitude2())
+            velocity = delta
+
+    myavgloc = avgloc([d.location() for d in track.detections[-1]])
+    return myavgloc + velocity
 
 # @dataclass
 # class Tracks:
