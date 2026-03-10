@@ -130,8 +130,9 @@ if __name__ == "__main__":
     print()
     ts = []
     ts = track(ds, range(100, 102), minprom=2, minrng=6.0, maxrng=8.0)
-    showtracks(ts)
+    def sortidx(t): return t.detections[0][0].range  # workaround for mypy
+    showtracks(sorted(ts, key=sortidx))
 
     # exit(0)
     # ts = track(ds, range(100, 150), minprom=3, minrng=0, maxrng=99999)
-    plot(ds, ts)
+    # plot(ds, ts)
