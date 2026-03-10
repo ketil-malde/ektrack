@@ -130,8 +130,10 @@ def link_det(dets1: List[List[Detection]], dets2: List[List[Detection]], thresho
     res = res + d1rest + d2rest
     return sorted(res, key=lambda x: x[0].range)
 
-# ############### Tracking across time ########################
 
+# Maybe: class Detections = Dict [freq] -> Detection?
+
+# ############### Tracking across time ########################
 
 @dataclass
 class Track:
@@ -139,79 +141,73 @@ class Track:
     detections: List[List[Detection]]
 
     # for predictions
-    velocity: Location
-    certainty: float
+    # velocity: Location
+    # certainty: float
 
     def __init__(self, det: List[Detection]):
         self.detections = [det]
-        self.velocity = Location(0, 0, 0)
-        self.certainty = 0
+        # self.velocity = Location(0, 0, 0)
+        # self.certainty = 0
 
     def summarize(self):
         '''Generate a finished track output'''
         pass
 
+def _pairs(d1, d2):
+    '''Link detections by frequency'''
+    pairs = {}
+    d1f = {d.freq: d for d in d1}
+    d2f = {d.freq: d for d in d2}
+    for fk in set(list(d1f.keys()) + list(d2f.keys())):
+        if fk in d1f.keys() and fk in d2f.keys():
+            pairs[fk] = (d1f[fk], d2f[fk])
+    return pairs
 
-def _delta_loc(track: Track):
-    '''Estimate movement from penultimate to last detection'''
-    # todo need to interpolate time as well
-    d1 = {d.freq: d for d in track.detections[-1]}
-    d2 = {d.freq: d for d in track.detections[-2]}
-    delta_t = track.detections[-1][0].time - track.detections[-2][0].time
-    delta_p = track.detections[-1][0].pingno - track.detections[-2][0].pingno
-    # accumulate location diffs (type hinting for acc as List[Location])
-    acc: List[Location] = []
-    for f_key in set(list(d1.keys()) + list(d2.keys())):
-        if f_key in d1.keys() and f_key in d2.keys(): acc.append(d1[f_key].location() - d2[f_key].location())
-        # and calculate average vector and ping and time delta
-    return avgloc(acc), delta_t, delta_p
+def fspec_sim_squared(d1: List[Detection], d2: List[Detection]) -> float:
+    '''Square dotproduct between detection score by frequency'''
+    return sum([x.score * y.score for (x, y) in _pairs(d1, d2).values()])
 
-def predict(track: Track, time: Optional[int] = None, avgvel: Location = Location(0, 0, 0), avgrot: Tuple[float, float] = (0.0, 0.0)) -> Location:
-    '''Update velocity and certainty and predict next detection from a track'''
-    # assert isinstance(avgvel, tuple)
-    assert isinstance(avgrot, tuple)
+def location_difference(tr: Track, det: List[Detection]) -> tuple[float, float]:
+    '''Calculate similiarty score between a track and a new detection'''
+    d0 = tr.detections[-1]
+    ps = _pairs(d0, det)
+    plocs = [b.location() - a.location() for (a, b) in ps.values()]
+    zsquares = sum([loc.z * loc.z for loc in plocs])
+    xysquares = sum([loc.x * loc.x + loc.y * loc.y for loc in plocs])
+    # todo: velocity
+    # NB! returns zero (perfect match) if no frequencies match
+    return zsquares, xysquares
 
-    if len(track.detections) == 1:
-        # Predict avg of other tracks? with high certainty
-        certainty = 0
-        velocity = avgvel
-    if len(track.detections) >= 2:
-        # Linear extrapolation, high certainty
-        delta, dt, dp = _delta_loc(track)
-        if len(track.detections) == 2:
-            certainty = 0
-            velocity = delta
-        else:
-            # Linear extrapolation of last two with estimated certainty from third
-            certainty = 0.5 * certainty + 0.5 * sqrt((delta - velocity).magnitude2())
-            velocity = delta
+def avg_loc_diff(tr: Track, det: List[Detection]) -> Tuple[float, float]:
+    '''Calculate similarity of avg location'''
+    d0 = tr.detections[-1]
+    tloc = avgloc([x.location() for x in d0])
+    dloc = avgloc([y.location() for y in det])
+    diff = tloc - dloc
+    return diff.z * diff.z, diff.x * diff.x + diff.y * diff.y
 
-    myavgloc = avgloc([d.location() for d in track.detections[-1]])
-    return myavgloc + velocity
+def track_similarity(tr: Track, det: List[Detection]) -> float:
+    zsq, xysq = location_difference(tr, det)
+    azsq, axysq = avg_loc_diff(tr, det)
+    d0 = tr.detections[-1]
+    fsq = 0.001 + fspec_sim_squared(d0, det)
+    # somewhat arbitrary temperatures here - this gives a *difference* not similarity!
+    # if diff is huge, this is zero.  If fsq is large return 1
+    ret = ((1 + exp(-(1 / fsq)))              # up to 100% bonus for freq score match
+           * (exp(-azsq / 0.1) * exp(-axysq)  # accuracy for average position
+              + exp(-zsq / 0.01) * exp(-xysq / 0.1)))  # accuracy for fmatched pos
+    return ret
 
-# @dataclass
-# class Tracks:
-#    track: List[Track]
-#    mru: List[Any]  # roll, pitch, heave?
-#    offsets: Dict[Any, Any]     # frequency -> location
-
-
-def similarity_locations(l_pred: Location, l_obs: Location, var: float = 0.01) -> float:
-    '''Score similarity between a predicted and an observed location'''
-    dist2 = (l_pred - l_obs).magnitude2()
-    return exp(-dist2 / var)
-
-# What type is detections here? List of detections grouped by frequency?
 def track1(tracks: List[Track], detections: List[List[Detection]], threshold: float = 1e-9) -> List[Track]:
-   # link tracks to detections (high confidence)
+    # link tracks to detections (high confidence)
     ntracks, ndets = len(tracks), len(detections)
     mx = np.empty((ntracks, ndets))
     for t in range(ntracks):
-        t_pred = tracks[t].predict()
         for d in range(ndets):
-            mx[t, d] = similarity_locations(t_pred, avgloc([x.location() for x in detections[d]]))
+            mx[t, d] = track_similarity(tracks[t], detections[d])
     tind, dind = linear_sum_assignment(mx, maximize=True)
 
+    # todo: add velocity and uncertainty
     # todo: adjust for average movement (include MRU)
     # todo: predict locations (include older tracks) and recalculate
 
