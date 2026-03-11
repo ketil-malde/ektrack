@@ -6,13 +6,6 @@ from math import exp, sin, sqrt
 from datetime import datetime
 import numpy as np
 
-
-# --- Parameters ---
-# 5 cm discrepancy reduces score with 1/e
-range_sigma = 0.05
-# angle of 2 degrees give same penalty as above
-angle_sigma = 2
-
 debug = False
 PI = 3.1415926
 
@@ -71,6 +64,12 @@ class Detection:
         '''Create from 3D coordinates'''
         pass
 
+
+# --- Detection clustering parameters ---
+# 2 cm discrepancy reduces score with 1/e
+range_sigma = 0.02
+# angle of 2 degrees give same penalty as above
+angle_sigma = 2
 
 def detection_similarity(det1: Detection, det2: Detection, uncertainty: float = 1.0) -> float:
     '''Distance between detections in pings with given time difference'''
@@ -140,7 +139,7 @@ class Track:
     # also track adjustments?
     detections: List[List[Detection]]
 
-    # for predictions
+    # for predictions:
     # velocity: Location
     # certainty: float
 
@@ -192,13 +191,14 @@ def track_similarity(tr: Track, det: List[Detection]) -> float:
     d0 = tr.detections[-1]
     fsq = 0.001 + fspec_sim_squared(d0, det)
     # somewhat arbitrary temperatures here - this gives a *difference* not similarity!
-    # if diff is huge, this is zero.  If fsq is large return 1
+    # if diff is huge, this is zero.  If fsq is large return 1 - don't sum, but average?
     ret = ((1 + exp(-(1 / fsq)))              # up to 100% bonus for freq score match
-           * (exp(-azsq / 0.1) * exp(-axysq)  # accuracy for average position
-              + exp(-zsq / 0.01) * exp(-xysq / 0.1)))  # accuracy for fmatched pos
+           * (exp(-azsq / 0.1) * exp(-axysq)))  # accuracy for average position
+    #          + exp(-zsq / 0.01) * exp(-xysq / 0.1)))  # accuracy for fmatched pos
+    # fuck: this is still better if no matching freqs
     return ret
 
-def track1(tracks: List[Track], detections: List[List[Detection]], threshold: float = 1e-9) -> List[Track]:
+def track1(tracks: List[Track], detections: List[List[Detection]], threshold: float = 1e-6) -> List[Track]:
     # link tracks to detections (high confidence)
     ntracks, ndets = len(tracks), len(detections)
     mx = np.empty((ntracks, ndets))
@@ -207,7 +207,7 @@ def track1(tracks: List[Track], detections: List[List[Detection]], threshold: fl
             mx[t, d] = track_similarity(tracks[t], detections[d])
     tind, dind = linear_sum_assignment(mx, maximize=True)
 
-    # todo: add velocity and uncertainty
+    # todo: add velocity, time! and uncertainty
     # todo: adjust for average movement (include MRU)
     # todo: predict locations (include older tracks) and recalculate
 
@@ -220,7 +220,7 @@ def track1(tracks: List[Track], detections: List[List[Detection]], threshold: fl
             t.detections.append(dmatch[i])
             updatedtracks.append(t)
         else:
-            # print('Not below threshold:', mx[tind[i], dind[i]], dmatch[i], tmatch[i])
+            print('Not above threshold:', mx[tind[i], dind[i]], dmatch[i], tmatch[i])
             updatedtracks.append(tmatch[i])
             updatedtracks.append(Track(dmatch[i]))
 
