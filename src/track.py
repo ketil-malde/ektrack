@@ -148,6 +148,13 @@ class Track:
         # self.velocity = Location(0, 0, 0)
         # self.certainty = 0
 
+    def last(self):
+        return self.detections[-1]
+
+    def append(self, dets):
+        # todo: update velocity
+        self.detections.append(dets)
+
     def summarize(self):
         '''Generate a finished track output'''
         pass
@@ -168,7 +175,7 @@ def fspec_sim_squared(d1: List[Detection], d2: List[Detection]) -> float:
 
 def location_difference(tr: Track, det: List[Detection]) -> tuple[float, float]:
     '''Calculate similiarty score between a track and a new detection'''
-    d0 = tr.detections[-1]
+    d0 = tr.last()
     ps = _pairs(d0, det)
     plocs = [b.location() - a.location() for (a, b) in ps.values()]
     zsquares = sum([loc.z * loc.z for loc in plocs])
@@ -179,7 +186,7 @@ def location_difference(tr: Track, det: List[Detection]) -> tuple[float, float]:
 
 def avg_loc_diff(tr: Track, det: List[Detection]) -> Tuple[float, float]:
     '''Calculate similarity of avg location'''
-    d0 = tr.detections[-1]
+    d0 = tr.last()
     tloc = avgloc([x.location() for x in d0])
     dloc = avgloc([y.location() for y in det])
     diff = tloc - dloc
@@ -188,7 +195,7 @@ def avg_loc_diff(tr: Track, det: List[Detection]) -> Tuple[float, float]:
 def track_similarity(tr: Track, det: List[Detection]) -> float:
     zsq, xysq = location_difference(tr, det)
     azsq, axysq = avg_loc_diff(tr, det)
-    d0 = tr.detections[-1]
+    d0 = tr.last()
     fsq = 0.001 + fspec_sim_squared(d0, det)
     # somewhat arbitrary temperatures here - this gives a *difference* not similarity!
     # if diff is huge, this is zero.  If fsq is large return 1 - don't sum, but average?
@@ -217,7 +224,7 @@ def track1(tracks: List[Track], detections: List[List[Detection]], threshold: fl
     for i in range(len(tind)):
         if mx[tind[i], dind[i]] > threshold:
             t = tmatch[i]
-            t.detections.append(dmatch[i])
+            t.append(dmatch[i])
             updatedtracks.append(t)
         else:
             print('Not above threshold:', mx[tind[i], dind[i]], dmatch[i], tmatch[i])
