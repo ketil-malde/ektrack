@@ -97,6 +97,7 @@ def showtracks(ts: List[Track]) -> None:
             for e in d:
                 print(e)
             print()
+        print(f'Velocity: {t.velocity}')
         print()
 
 

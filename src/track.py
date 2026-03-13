@@ -176,13 +176,13 @@ def _velocity(d1, d2):
     ps = _pairs(d1, d2)
     if ps:
         locdiffs = [p2.location() - p1.location() for (p1, p2) in ps.values()]
-        tdiffs = [p2.time - p1.time for (p1, p2) in ps.values()]
+        tdiffs = [(p2.time - p1.time) / 1e9 for (p1, p2) in ps.values()]
         return avgloc(locdiffs).scale(1 / average(tdiffs))  # whops: todo: divide individually
     else:
         loc1 = avgloc([d.location() for d in d1])
         loc2 = avgloc([d.location() for d in d2])
-        t1 = average([d.time for d in d1])
-        t2 = average([d.time for d in d2])
+        t1 = average([d.time for d in d1]) / 1e9
+        t2 = average([d.time for d in d2]) / 1e9
         return (loc2 - loc1).scale(1 / (t2 - t1))
 
 # calculate a gaussian pdf
@@ -192,10 +192,9 @@ def fspec_sim_squared(d1: List[Detection], d2: List[Detection]) -> float:
     '''Square dotproduct between detection score by frequency'''
     return sum([x.score * y.score for (x, y) in _pairs(d1, d2).values()])
 
-def location_difference(tr: Track, det: List[Detection]) -> tuple[float, float]:
+def location_difference(trdet: List[Detection], det: List[Detection]) -> tuple[float, float]:
     '''Calculate similiarty score between a track and a new detection'''
-    d0 = tr.last()
-    ps = _pairs(d0, det)
+    ps = _pairs(trdet, det)
     plocs = [b.location() - a.location() for (a, b) in ps.values()]
     zsquares = sum([loc.z * loc.z for loc in plocs])
     xysquares = sum([loc.x * loc.x + loc.y * loc.y for loc in plocs])
