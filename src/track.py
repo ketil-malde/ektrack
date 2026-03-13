@@ -140,19 +140,20 @@ class Track:
     detections: List[List[Detection]]
 
     # for predictions:
-    # velocity: Location
+    velocity: Location
     # certainty: float
 
     def __init__(self, det: List[Detection]):
         self.detections = [det]
-        # self.velocity = Location(0, 0, 0)
+        self.velocity = None
         # self.certainty = 0
 
     def last(self):
         return self.detections[-1]
 
     def append(self, dets):
-        # todo: update velocity
+        # first order velocity
+        self.velocity = _velocity(self.last(), dets)
         self.detections.append(dets)
 
     def summarize(self):
@@ -169,6 +170,24 @@ def _pairs(d1, d2):
             pairs[fk] = (d1f[fk], d2f[fk])
     return pairs
 
+def average(lst): return sum(lst) / len(lst)
+
+def _velocity(d1, d2):
+    ps = _pairs(d1, d2)
+    if ps:
+        locdiffs = [p2.location() - p1.location() for (p1, p2) in ps.values()]
+        tdiffs = [p2.time - p1.time for (p1, p2) in ps.values()]
+        return avgloc(locdiffs).scale(1 / average(tdiffs))  # whops: todo: divide individually
+    else:
+        loc1 = avgloc([d.location() for d in d1])
+        loc2 = avgloc([d.location() for d in d2])
+        t1 = average([d.time for d in d1])
+        t2 = average([d.time for d in d2])
+        return (loc2 - loc1).scale(1 / (t2 - t1))
+
+# calculate a gaussian pdf
+def sigma(x2, mu): return exp(-x2 / (mu * mu)) / mu
+
 def fspec_sim_squared(d1: List[Detection], d2: List[Detection]) -> float:
     '''Square dotproduct between detection score by frequency'''
     return sum([x.score * y.score for (x, y) in _pairs(d1, d2).values()])
@@ -184,17 +203,16 @@ def location_difference(tr: Track, det: List[Detection]) -> tuple[float, float]:
     # NB! returns zero (perfect match) if no frequencies match
     return zsquares, xysquares
 
-def avg_loc_diff(tr: Track, det: List[Detection]) -> Tuple[float, float]:
-    '''Calculate similarity of avg location'''
-    d0 = tr.last()
-    tloc = avgloc([x.location() for x in d0])
+def avg_loc_diff(trdet: List[Detection], det: List[Detection]) -> Tuple[float, float]:
+    '''Calculate similarity of avg location, return z and xy separately'''
+    tloc = avgloc([x.location() for x in trdet])
     dloc = avgloc([y.location() for y in det])
     diff = tloc - dloc
     return diff.z * diff.z, diff.x * diff.x + diff.y * diff.y
 
 def track_similarity(tr: Track, det: List[Detection]) -> float:
     zsq, xysq = location_difference(tr, det)
-    azsq, axysq = avg_loc_diff(tr, det)
+    azsq, axysq = avg_loc_diff(tr.last(), det)
     d0 = tr.last()
     fsq = 0.001 + fspec_sim_squared(d0, det)
     # somewhat arbitrary temperatures here - this gives a *difference* not similarity!
