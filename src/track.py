@@ -210,7 +210,7 @@ def avg_loc_diff(trdet: List[Detection], det: List[Detection]) -> Tuple[float, f
     return diff.z * diff.z, diff.x * diff.x + diff.y * diff.y
 
 def track_similarity(tr: Track, det: List[Detection]) -> float:
-    zsq, xysq = location_difference(tr, det)
+    zsq, xysq = location_difference(tr.last(), det)
     azsq, axysq = avg_loc_diff(tr.last(), det)
     d0 = tr.last()
     fsq = 0.001 + fspec_sim_squared(d0, det)
