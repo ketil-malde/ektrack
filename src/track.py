@@ -195,7 +195,8 @@ def fspec_sim_squared(d1: List[Detection], d2: List[Detection]) -> float:
 def location_difference(trdet: List[Detection], det: List[Detection], velocity: Location = None) -> tuple[float, float]:
     '''Calculate similiarty score between a track and a new detection'''
     ps = _pairs(trdet, det)
-    plocs = [b.location() - a.location() - (velocity if velocity else Location(0, 0, 0)) for (a, b) in ps.values()]
+    def tdelta(d1, d2): return d2.time - d1.time
+    plocs = [b.location() - a.location() - (velocity.scale(tdelta(a, b)) if velocity else Location(0, 0, 0)) for (a, b) in ps.values()]
     zsquares = sum([loc.z * loc.z for loc in plocs])
     xysquares = sum([loc.x * loc.x + loc.y * loc.y for loc in plocs])
     # todo: velocity
@@ -206,7 +207,8 @@ def avg_loc_diff(trdet: List[Detection], det: List[Detection], velocity: Locatio
     '''Calculate similarity of avg location, return z and xy separately'''
     tloc = avgloc([x.location() for x in trdet])
     dloc = avgloc([y.location() for y in det])
-    diff = tloc - dloc + (velocity if velocity else Location(0, 0, 0))
+    tdelta = average([d.time for d in det]) / 1e9 - average([d.time for d in trdet]) / 1e9
+    diff = tloc - dloc + (velocity.scale(tdelta) if velocity else Location(0, 0, 0))
     return diff.z * diff.z, diff.x * diff.x + diff.y * diff.y
 
 def track_similarity(tr: Track, det: List[Detection]) -> float:
