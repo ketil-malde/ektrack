@@ -6,7 +6,7 @@ from math import exp, sin, sqrt
 from datetime import datetime
 import numpy as np
 
-debug = False
+debug = True
 PI = 3.1415926
 
 @dataclass
@@ -220,6 +220,7 @@ def track_similarity(tr: Track, det: List[Detection]) -> float:
     # if diff is huge, this is zero.  If fsq is large return 1 - don't sum, but average?
     ret = ((1 + exp(-(1 / fsq)))              # up to 100% bonus for freq score match
            * (exp(-azsq / 0.1) * exp(-axysq)))  # accuracy for average position
+    # todo: use sigmoid(azsq, 0.1)
     #          + exp(-zsq / 0.01) * exp(-xysq / 0.1)))  # accuracy for fmatched pos
     # fuck: this is still better if no matching freqs
     return ret
@@ -243,10 +244,21 @@ def track1(tracks: List[Track], detections: List[List[Detection]], threshold: fl
     for i in range(len(tind)):
         if mx[tind[i], dind[i]] > threshold:
             t = tmatch[i]
+            if debug:
+                print('Appended by score:', mx[tind[i], dind[i]])
+                for e in t.last(): print(e)
+                print('--')
+                for e in dmatch[i]: print(e)
+                print()
             t.append(dmatch[i])
             updatedtracks.append(t)
         else:
-            print('Not above threshold:', mx[tind[i], dind[i]], dmatch[i], tmatch[i])
+            if debug:
+                print('Not above threshold:', mx[tind[i], dind[i]])
+                for e in dmatch[i]: print(e)
+                print('--')
+                for e in tmatch[i].last(): print(e)
+                print()
             updatedtracks.append(tmatch[i])
             updatedtracks.append(Track(dmatch[i]))
 

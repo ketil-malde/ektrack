@@ -128,7 +128,7 @@ if __name__ == "__main__":
         for aa in a:
             print(aa)
 
-    print()
+    print('\n*** Tracking ***\n')
     ts = []
     ts = track(ds, range(100, 102), minprom=2, minrng=6.0, maxrng=8.0)
     def sortidx(t): return t.detections[0][0].range  # workaround for mypy
