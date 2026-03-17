@@ -224,7 +224,7 @@ def track_similarity(tr: Track, det: List[Detection]) -> float:
     d0 = tr.last()
     ret = (1 + fspec_sim_squared(d0, det))       # up to 100% bonus for freq score match
     locscore = location_difference(tr.last(), det, tr.velocity)
-    if locscore:
+    if locscore is not None:
         ret = ret * locscore
     else:
         ret = ret * avg_loc_diff(tr.last(), det, tr.velocity)

@@ -71,14 +71,27 @@ def regrid(ch: Dict[str, xr.Dataset], brighten: float = 1.0) -> xr.DataArray:
 
     return xr.concat([f38k, f120k, f200k], dim='color')
 
-def track(ch: Dict[str, xr.Dataset], pings: range, minprom: float = 1.0, minrng: float = 6.0, maxrng: float = 8.0) -> List[Track]:
-    # todo: prune old tracks and maybe singletons?
-    
+
+# Parameter
+max_age = 3.1  # seconds
+
+def track(ch: Dict[str, xr.Dataset], pings: range, minprom: float = 2.0, minrng: float = 6.0, maxrng: float = 8.0) -> List[Track]:
     '''Run tracking, iterating over pings'''
     tracks = []
+    old_tracks = []
     for p in pings:
-        print(p, len(tracks), end='\r')
+        print('Processing ping:', p, '#tracks:', len(tracks), end='')
         dets = detections(ch, p, minprom=minprom, minrng=minrng, maxrng=maxrng)
+
+        # Prune aged tracks
+        for g, d in dets.items():
+            dtime = d[0].time / 1e9
+            break
+        print('dtime:', dtime, end='\r')
+        for i, t in enumerate(tracks):
+            ttime = t.last()[0].time / 1e9
+            if dtime - ttime > max_age:
+                old_tracks.append(tracks.pop(i))
         acc = None
         for g, ds in dets.items():
             ds = [[d] for d in ds]
@@ -87,8 +100,8 @@ def track(ch: Dict[str, xr.Dataset], pings: range, minprom: float = 1.0, minrng:
             else:
                 acc = link_det(acc, ds)
         tracks = track1(tracks, acc)
-
-    return tracks
+    print()
+    return tracks + old_tracks
 
 def showtracks(ts: List[Track]) -> None:
     for t in ts:
