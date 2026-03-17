@@ -185,44 +185,49 @@ def _velocity(d1, d2):
         t2 = average([d.time for d in d2]) / 1e9
         return (loc2 - loc1).scale(1 / (t2 - t1))
 
-# calculate a gaussian pdf
-def sigma(x2, mu): return exp(-x2 / (mu * mu)) / mu
+# calculate a gaussian pdf, scaled to 2\pi (or something)
+def sigmoid(x2, sd): return exp(-x2 / (sd * sd)) / sd
+
+
+# Parameters
+fspectrum_sd = 1
+matched_f_z_sd = 0.05
+matched_f_xy_sd = 0.15
+avgloc_z_sd = 0.1
+avgloc_xy_sd = 0.2
 
 def fspec_sim_squared(d1: List[Detection], d2: List[Detection]) -> float:
     '''Square dotproduct between detection score by frequency'''
-    return sum([x.score * y.score for (x, y) in _pairs(d1, d2).values()])
+    ssq = sum([x.score * y.score for (x, y) in _pairs(d1, d2).values()])
+    return sigmoid(1 / (0.0001 + ssq), fspectrum_sd)
 
-def location_difference(trdet: List[Detection], det: List[Detection], velocity: Optional[Location] = None) -> Tuple[float, float]:
+def location_difference(trdet: List[Detection], det: List[Detection], velocity: Optional[Location] = None) -> Optional[float]:
     '''Calculate similiarty score between a track and a new detection'''
     ps = _pairs(trdet, det)
+    if not ps: return None
+
     def tdelta(d1, d2): return d2.time - d1.time
     plocs = [b.location() - a.location() - (velocity.scale(tdelta(a, b)) if velocity else Location(0, 0, 0)) for (a, b) in ps.values()]
     zsquares = sum([loc.z * loc.z for loc in plocs])
     xysquares = sum([loc.x * loc.x + loc.y * loc.y for loc in plocs])
-    # todo: velocity
-    # NB! returns zero (perfect match) if no frequencies match
-    return zsquares, xysquares
+    return sigmoid(zsquares, matched_f_z_sd) * sigmoid(xysquares, matched_f_xy_sd)
 
-def avg_loc_diff(trdet: List[Detection], det: List[Detection], velocity: Optional[Location] = None) -> Tuple[float, float]:
+def avg_loc_diff(trdet: List[Detection], det: List[Detection], velocity: Optional[Location] = None) -> float:
     '''Calculate similarity of avg location, return z and xy separately'''
     tloc = avgloc([x.location() for x in trdet])
     dloc = avgloc([y.location() for y in det])
     tdelta = average([d.time for d in det]) / 1e9 - average([d.time for d in trdet]) / 1e9
     diff = tloc - dloc + (velocity.scale(tdelta) if velocity else Location(0, 0, 0))
-    return diff.z * diff.z, diff.x * diff.x + diff.y * diff.y
+    return sigmoid(diff.z * diff.z, avgloc_z_sd) * sigmoid(diff.x * diff.x + diff.y * diff.y, avgloc_xy_sd)
 
 def track_similarity(tr: Track, det: List[Detection]) -> float:
-    zsq, xysq = location_difference(tr.last(), det, tr.velocity)
-    azsq, axysq = avg_loc_diff(tr.last(), det, tr.velocity)
     d0 = tr.last()
-    fsq = 0.001 + fspec_sim_squared(d0, det)
-    # somewhat arbitrary temperatures here - this gives a *difference* not similarity!
-    # if diff is huge, this is zero.  If fsq is large return 1 - don't sum, but average?
-    ret = ((1 + exp(-(1 / fsq)))              # up to 100% bonus for freq score match
-           * (exp(-azsq / 0.1) * exp(-axysq)))  # accuracy for average position
-    # todo: use sigmoid(azsq, 0.1)
-    #          + exp(-zsq / 0.01) * exp(-xysq / 0.1)))  # accuracy for fmatched pos
-    # fsck: this is still better if no matching freqs
+    ret = (1 + fspec_sim_squared(d0, det))       # up to 100% bonus for freq score match
+    locscore = location_difference(tr.last(), det, tr.velocity)
+    if locscore:
+        ret = ret * locscore
+    else:
+        ret = ret * avg_loc_diff(tr.last(), det, tr.velocity)
     return ret
 
 def track1(tracks: List[Track], detections: List[List[Detection]], threshold: float = 1e-6) -> List[Track]:
