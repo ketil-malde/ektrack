@@ -57,7 +57,7 @@ class Detection:
         '''Convert to 3D coordinates'''
         x = self.range * sin(PI * self.theta / 180)
         y = self.range * sin(PI * self.phi / 180)
-        z = sqrt(self.range * self.range - x * x - y * y)
+        z = sqrt(max(self.range * self.range - x * x - y * y, 0))
         return Location(x, y, z)
 
     def from_location(self, x: float, y: float, z: float) -> None:
@@ -140,7 +140,7 @@ class Track:
     detections: List[List[Detection]]
 
     # for predictions:
-    velocity: Location
+    velocity: Optional[Location]
     # certainty: float
 
     def __init__(self, det: List[Detection]):
@@ -192,7 +192,7 @@ def fspec_sim_squared(d1: List[Detection], d2: List[Detection]) -> float:
     '''Square dotproduct between detection score by frequency'''
     return sum([x.score * y.score for (x, y) in _pairs(d1, d2).values()])
 
-def location_difference(trdet: List[Detection], det: List[Detection], velocity: Location = None) -> tuple[float, float]:
+def location_difference(trdet: List[Detection], det: List[Detection], velocity: Location = None) -> Tuple[float, float]:
     '''Calculate similiarty score between a track and a new detection'''
     ps = _pairs(trdet, det)
     def tdelta(d1, d2): return d2.time - d1.time
@@ -222,7 +222,7 @@ def track_similarity(tr: Track, det: List[Detection]) -> float:
            * (exp(-azsq / 0.1) * exp(-axysq)))  # accuracy for average position
     # todo: use sigmoid(azsq, 0.1)
     #          + exp(-zsq / 0.01) * exp(-xysq / 0.1)))  # accuracy for fmatched pos
-    # fuck: this is still better if no matching freqs
+    # fsck: this is still better if no matching freqs
     return ret
 
 def track1(tracks: List[Track], detections: List[List[Detection]], threshold: float = 1e-6) -> List[Track]:
@@ -299,7 +299,6 @@ def _readcsvfile():
         ps = []
         for k, ds in groupby(map(mkdet, r), key=lambda x: x.pingno):
             print('Ping:', k)
-            # for d in ds: print(d) # what the FLYING FUCK?!
             p0 = _genmdet(ds)  # NB: destructive on ds
             for d in p0:
                 for x in d:
