@@ -192,7 +192,7 @@ def fspec_sim_squared(d1: List[Detection], d2: List[Detection]) -> float:
     '''Square dotproduct between detection score by frequency'''
     return sum([x.score * y.score for (x, y) in _pairs(d1, d2).values()])
 
-def location_difference(trdet: List[Detection], det: List[Detection], velocity: Location = None) -> Tuple[float, float]:
+def location_difference(trdet: List[Detection], det: List[Detection], velocity: Optional[Location] = None) -> Tuple[float, float]:
     '''Calculate similiarty score between a track and a new detection'''
     ps = _pairs(trdet, det)
     def tdelta(d1, d2): return d2.time - d1.time
@@ -203,7 +203,7 @@ def location_difference(trdet: List[Detection], det: List[Detection], velocity: 
     # NB! returns zero (perfect match) if no frequencies match
     return zsquares, xysquares
 
-def avg_loc_diff(trdet: List[Detection], det: List[Detection], velocity: Location = None) -> Tuple[float, float]:
+def avg_loc_diff(trdet: List[Detection], det: List[Detection], velocity: Optional[Location] = None) -> Tuple[float, float]:
     '''Calculate similarity of avg location, return z and xy separately'''
     tloc = avgloc([x.location() for x in trdet])
     dloc = avgloc([y.location() for y in det])
