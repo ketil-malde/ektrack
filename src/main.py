@@ -1,5 +1,6 @@
-from netcdf2dets import readnetcdf, calc_prom_arrays, detections
-from track import track1, link_det, Track, Detection
+from netcdf2dets import detections, load
+from detections import Detection, cluster_det
+from track import Track, track1
 
 from matplotlib import pyplot as plt, colors as mcolors
 import numpy as np
@@ -8,12 +9,6 @@ from datetime import datetime, timezone
 
 import sys
 from typing import Dict, List
-
-def load(infile: str) -> Dict[str, xr.Dataset]:
-    '''Read the NetCDF file and calculate prominence'''
-    ch = readnetcdf(infile)
-    calc_prom_arrays(ch)
-    return ch
 
 def plot(ch: Dict[str, xr.Dataset], tracks: List[Track] = []) -> None:
     '''Generate plots of PC data and prominence'''
@@ -92,13 +87,7 @@ def track(ch: Dict[str, xr.Dataset], pings: range, minprom: float = 2.0, minrng:
             ttime = t.last()[0].time / 1e9
             if dtime - ttime > max_age:
                 old_tracks.append(tracks.pop(i))
-        acc = None
-        for g, ds in dets.items():
-            ds = [[d] for d in ds]
-            if not acc:
-                acc = ds
-            else:
-                acc = link_det(acc, ds)
+        acc = cluster_det(dets)
         tracks = track1(tracks, acc)
     print()
     return tracks + old_tracks
@@ -129,13 +118,7 @@ if __name__ == "__main__":
             for z0 in z: print(z0)
         print()
 
-    acc = None
-    for g, dd in ds1.items():
-        dd = [[d] for d in dd]
-        if not acc:
-            acc = dd
-        else:
-            acc = link_det(acc, dd)
+    acc = cluster_det(ds1)
     for a in acc:
         print()
         for aa in a:
@@ -143,10 +126,16 @@ if __name__ == "__main__":
 
     print('\n*** Tracking ***\n')
     ts = []
-    ts = track(ds, range(100, 102), minprom=2, minrng=6.0, maxrng=8.0)
+    ts = track(ds, range(100, 200), minprom=2, minrng=6.0, maxrng=6.5)
     def sortidx(t): return t.detections[0][0].range  # workaround for mypy
     showtracks(sorted(ts, key=sortidx))
 
     # exit(0)
     # ts = track(ds, range(100, 150), minprom=3, minrng=0, maxrng=99999)
     # plot(ds, ts)
+
+    # Todo - tests:
+    # 1. number of tracks
+    # 2. number of singleton detections
+    # 3. track lengths?
+    # 4. number of detections

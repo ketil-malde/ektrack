@@ -5,7 +5,7 @@ from sys import argv
 from typing import Dict, List
 
 from prominence import prominence
-from track import Detection
+from detections import Detection
 
 
 def readnetcdf(ncfile: str) -> Dict[str, xr.Dataset]:
@@ -63,6 +63,12 @@ def detections(pch: Dict[str, xr.Dataset], p: int, minprom: float = 0.0, maxrng:
         for pr, r, th, ph in zip(prom[idx], rng[idx], theta[idx], phi[idx]):
             res[g].append(Detection(p, time.item(), int(pch[g].frequency), r.item(), th.item(), ph.item(), pr.item()))
     return res
+
+def load(infile: str) -> Dict[str, xr.Dataset]:
+    '''Read the NetCDF file and calculate prominence'''
+    ch = readnetcdf(infile)
+    calc_prom_arrays(ch)
+    return ch
 
 
 # ../data/D20230803-T230004.nc <- salmon plus seabed?

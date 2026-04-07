@@ -128,9 +128,16 @@ def link_det(dets1: List[List[Detection]], dets2: List[List[Detection]], thresho
     res = res + d1rest + d2rest
     return sorted(res, key=lambda x: x[0].range)
 
+def cluster_det(dets: List[List[Detection]]) -> List[List[Detection]]:
+    '''Group detections from the same objects across frequencies'''
+    acc = None
+    for g, dd in dets.items():
+        dd = [[d] for d in dd]
+        if not acc:
+            acc = dd
+        else:
+            acc = link_det(acc, dd)
+    return acc
+
+
 # Maybe: class Detections = Dict [freq] -> Detection?
-
-
-if __name__ == '__main__':
-    # Run tests/benchmark across parameters
-    

@@ -6,7 +6,7 @@ from math import exp
 import numpy as np
 
 from detections import Location, Detection, avgloc
-from detections import link_det, mkdet  # for testing?
+from detections import link_det, mkdet
 
 debug = False
 
