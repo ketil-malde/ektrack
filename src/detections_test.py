@@ -3,6 +3,7 @@
 # Many detections, few singletons = good
 
 from netcdf2dets import load, detections
+from netcdf2dets import load, get_detections
 from detections import cluster_det
 import sys
 
@@ -13,10 +14,10 @@ if __name__ == '__main__':
 
     # todo: vary angle_sigma and range_sigma
     for prom in [1.0, 1.5, 2.0, 2.5]:
-        dsi = detections(ds, p=100, minrng=5, maxrng=50, minprom=prom)
         for f, dets in dsi.items():
             print(prom, f, len(dets))
         print()
+        dsi = get_detections(ds, p=100, minrng=5, maxrng=50, minprom=prom)
 
         dcl = cluster_det(dsi)
         # count number of detections and number of singletons

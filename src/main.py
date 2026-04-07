@@ -1,4 +1,4 @@
-from netcdf2dets import detections, load
+from netcdf2dets import get_detections, load
 from detections import Detection, cluster_det
 from track import Track, track1
 
@@ -76,7 +76,7 @@ def track(ch: Dict[str, xr.Dataset], pings: range, minprom: float = 2.0, minrng:
     old_tracks = []
     for p in pings:
         print('Processing ping:', p, '#tracks:', len(tracks), end='')
-        dets = detections(ch, p, minprom=minprom, minrng=minrng, maxrng=maxrng)
+        dets = get_detections(ch, p, minprom=minprom, minrng=minrng, maxrng=maxrng)
 
         # Prune aged tracks
         for g, d in dets.items():
@@ -110,8 +110,8 @@ if __name__ == "__main__":
     # rds = regrid(ds)
     # rds.T.plot.imshow(rgb='color', add_colorbar=False)
     # plt.show()
-    ds1: Dict[str, List[Detection]] = detections(ds, 100, minrng=6.0, maxrng=8.0, minprom=2.0)
-    ds2: Dict[str, List[Detection]] = detections(ds, 101, minrng=6.0, maxrng=8.0, minprom=2.0)
+    ds1: Dict[str, List[Detection]] = get_detections(ds, 100, minrng=6.0, maxrng=8.0, minprom=2.0)
+    ds2: Dict[str, List[Detection]] = get_detections(ds, 101, minrng=6.0, maxrng=8.0, minprom=2.0)
     for d in [ds1, ds2]:
         for s, z in d.items():
             print(s)

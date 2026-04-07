@@ -49,7 +49,7 @@ def calc_prom_arrays(channels: Dict[str, xr.Dataset]) -> None:
             dims=["ping_time", "range"],
             coords=[channels[g]['ping_time'], channels[g]['range']])
 
-def detections(pch: Dict[str, xr.Dataset], p: int, minprom: float = 0.0, maxrng: float = 999999.0, minrng: float = 0.0) -> Dict[str, List[Detection]]:
+def get_detections(pch: Dict[str, xr.Dataset], p: int, minprom: float = 0.0, maxrng: float = 999999.0, minrng: float = 0.0) -> Dict[str, List[Detection]]:
     """Calculate detections using prominence threshold"""
     res = {}
     for g, mych in pch.items():
@@ -81,7 +81,7 @@ if __name__ == '__main__':
 
     # compute the detections
     prange = 10  # len(ch[next(iter(ch))]['ping_time'])
-    dsd = [detections(ch, i, minprom=2.0, minrng=6.0, maxrng=8.0) for i in range(prange)]
+    dsd = [get_detections(ch, i, minprom=2.0, minrng=6.0, maxrng=8.0) for i in range(prange)]
 
     # Print results
     # for dss in dsd:
