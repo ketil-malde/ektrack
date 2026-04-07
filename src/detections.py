@@ -66,9 +66,9 @@ class Detection:
         pass
 
 
-# Detection clustering parameters ---
-range_sigma = 0.02  # 2 cm discrepancy reduces score with 1/e
-angle_sigma = 2  # angle of 2 degrees give same penalty as above
+# Detection clustering parameters, optimized with detections_test
+range_sigma = 0.15  # 15 cm discrepancy reduces score with 1/e
+angle_sigma = 5     # angle of 5 degrees give same penalty as above
 
 def detection_similarity(det1: Detection, det2: Detection, uncertainty: float = 1.0) -> float:
     '''Distance between detections in pings with given time difference'''
