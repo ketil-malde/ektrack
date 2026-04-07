@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, Any, Optional, Union  # Iterable, Callable, Tuple, Dict
+from typing import List, Any, Optional, Union, Dict  # Iterable, Callable, Tuple, Dict
 
 from datetime import datetime
 from dataclasses import dataclass
@@ -128,10 +128,10 @@ def link_det(dets1: List[List[Detection]], dets2: List[List[Detection]], thresho
     res = res + d1rest + d2rest
     return sorted(res, key=lambda x: x[0].range)
 
-def cluster_det(dets: List[List[Detection]]) -> List[List[Detection]]:
+def cluster_det(dets: Dict[str, List[Detection]]) -> List[List[Detection]]:
     '''Group detections from the same objects across frequencies'''
-    acc = None
     for g, dd in dets.items():
+    acc = []
         dd = [[d] for d in dd]
         if not acc:
             acc = dd
