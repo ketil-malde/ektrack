@@ -75,21 +75,21 @@ def track(ch: Dict[str, xr.Dataset], pings: range, minprom: float = 2.0, minrng:
     tracks = []
     old_tracks = []
     for p in pings:
-        print('Processing ping:', p, '#tracks:', len(tracks), end='')
+        # print('Processing ping:', p, '#tracks:', len(tracks), end='')
         dets = get_detections(ch, p, minprom=minprom, minrng=minrng, maxrng=maxrng)
 
         # Prune aged tracks
         for g, d in dets.items():
             dtime = d[0].time / 1e9
             break
-        print('dtime:', dtime, end='\r')
+        # print('dtime:', dtime, end='\r')
         for i, t in enumerate(tracks):
             ttime = t.last()[0].time / 1e9
             if dtime - ttime > max_age:
                 old_tracks.append(tracks.pop(i))
         acc = cluster_det(dets)
         tracks = track1(tracks, acc)
-    print()
+    # print()
     return tracks + old_tracks
 
 def showtracks(ts: List[Track]) -> None:
