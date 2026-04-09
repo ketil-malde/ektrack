@@ -131,8 +131,8 @@ if __name__ == "__main__":
     showtracks(sorted(ts, key=sortidx))
 
     # exit(0)
-    # ts = track(ds, range(100, 150), minprom=3, minrng=0, maxrng=99999)
-    # plot(ds, ts)
+    ts = track(ds, range(174, 180), minprom=3, minrng=5, maxrng=30)
+    plot(ds, ts)
 
     # Todo - tests:
     # 1. number of tracks
