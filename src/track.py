@@ -91,9 +91,11 @@ def location_difference(trdet: List[Detection], det: List[Detection], velocity: 
 
     plocs = [b.location() - a.location() - (velocity.scale(tdelta(a, b)) if velocity else Location(0, 0, 0)) for (a, b) in ps.values()]
     zsquares = average([loc.z * loc.z for loc in plocs])
+    zscore = sigmoid(zsquares, matched_f_z_sd)
     xysquares = average([loc.x * loc.x + loc.y * loc.y for loc in plocs])
-    if debug: print(f'location diff: ps={len(ps)}, zsq={zsquares:.4f} xysq={xysquares:.4f}')
-    return sigmoid(zsquares, matched_f_z_sd) * sigmoid(xysquares, matched_f_xy_sd)
+    xyscore = sigmoid(xysquares, matched_f_xy_sd)
+    if debug: print(f'location diff: ps={len(ps)}, zsq={zsquares:.1f} xysq={xysquares:.1f} zscore={zscore:.4f} xyscore={xyscore:.4f}')
+    return zscore * xyscore
 
 
 def avg_loc_diff(trdet: List[Detection], det: List[Detection], velocity: Optional[Location] = None) -> float:
