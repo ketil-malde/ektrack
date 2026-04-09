@@ -73,18 +73,28 @@ matched_f_z_sd = 0.05
 matched_f_xy_sd = 0.15
 avgloc_z_sd = 0.1
 avgloc_xy_sd = 0.2
+score_sd = 0.5
 
 def fspec_sim_squared(d1: List[Detection], d2: List[Detection]) -> float:
     '''Square dotproduct between detection score by frequency'''
     ssq = sum([x.score * y.score for (x, y) in _pairs(d1, d2).values()])
     return sigmoid(1 / (0.0001 + ssq), fspectrum_sd)
 
+def score_similarity(d1: List[Detection], d2: List[Detection]) -> float:
+    '''Direct score similarity over matched frequencies (higher when scores are close and high).'''
+    ps = _pairs(d1, d2)
+    if not ps:
+        return 0.0
+    diffsq = sum([(a.score - b.score) * (a.score - b.score) for (a, b) in ps.values()])
+    strengths = sum([(a.score + b.score) for (a, b) in ps.values()])
+    return sigmoid(diffsq, score_sd) * (1.0 + strengths)
+
 def location_difference(trdet: List[Detection], det: List[Detection], velocity: Optional[Location] = None) -> Optional[float]:
     '''Calculate similiarty score between a track and a new detection'''
     ps = _pairs(trdet, det)
     if not ps: return None
 
-    def tdelta(d1, d2): return d2.time - d1.time
+    def tdelta(d1, d2): return (d2.time - d1.time) / 1e9
     plocs = [b.location() - a.location() - (velocity.scale(tdelta(a, b)) if velocity else Location(0, 0, 0)) for (a, b) in ps.values()]
     zsquares = sum([loc.z * loc.z for loc in plocs])
     xysquares = sum([loc.x * loc.x + loc.y * loc.y for loc in plocs])
@@ -95,12 +105,14 @@ def avg_loc_diff(trdet: List[Detection], det: List[Detection], velocity: Optiona
     tloc = avgloc([x.location() for x in trdet])
     dloc = avgloc([y.location() for y in det])
     tdelta = average([d.time for d in det]) / 1e9 - average([d.time for d in trdet]) / 1e9
-    diff = tloc - dloc + (velocity.scale(tdelta) if velocity else Location(0, 0, 0))
+    predicted_tloc = tloc + (velocity.scale(tdelta) if velocity else Location(0, 0, 0))
+    diff = dloc - predicted_tloc
     return sigmoid(diff.z * diff.z, avgloc_z_sd) * sigmoid(diff.x * diff.x + diff.y * diff.y, avgloc_xy_sd)
 
 def track_similarity(tr: Track, det: List[Detection]) -> float:
     d0 = tr.last()
     ret = (1 + fspec_sim_squared(d0, det))       # up to 100% bonus for freq score match
+    ret = ret * (1 + score_similarity(d0, det))  # bonus for direct signal-strength consistency
     locscore = location_difference(tr.last(), det, tr.velocity)
     if locscore is not None:
         ret = ret * locscore
