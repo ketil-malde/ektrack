@@ -112,8 +112,10 @@ def track_similarity(tr: Track, det: List[Detection]) -> float:
         print('-- vs --')
         for e in det: print(e)
     d0 = tr.last()
-    ret = (1 + fspec_sim_squared(d0, det))       # up to 100% bonus for freq score match
+    ret = (1 + 2 * fspec_sim_squared(d0, det))       # up to 100% bonus for freq score match
     if debug: print(f'frequency match bonus = {ret:.4f}')
+    tdelta = (det[0].time - d0[0].time) / 1e9  # seconds
+    ret = ret / tdelta
     locscore = location_difference(tr.last(), det, tr.velocity)
     if locscore is not None:
         if debug: print(f'locscore = {locscore:.8f}')
@@ -122,7 +124,7 @@ def track_similarity(tr: Track, det: List[Detection]) -> float:
         ald = avg_loc_diff(tr.last(), det, tr.velocity)
         if debug: print(f'avg_loc_score = {ald:.8f}')
         ret = ret * ald
-    print(f'=> Final track similarity score: {ret:.8f}')
+    if debug: print(f'=> Final track similarity score: {ret:.8f}')
     return ret
 
 
