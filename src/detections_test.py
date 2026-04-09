@@ -17,8 +17,8 @@ if __name__ == '__main__':
     for _ in range(50):
         # parameters - sample randomly
         prom = random.uniform(3, 10) / 3
-        detections.range_sigma = 0.15 # random.uniform(1, 10) / 50
-        detections.angle_sigma = 5  # random.uniform(3, 18) / 3
+        detections.range_sigma = random.uniform(10, 20) / 100
+        detections.angle_sigma = random.uniform(3, 18) / 3
 
         dsi = get_detections(ds, p=100, minrng=5, maxrng=50, minprom=prom)
         # for f, dets in dsi.items():
