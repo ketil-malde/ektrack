@@ -55,7 +55,7 @@ def _velocity(d1, d2):
     if ps:
         locdiffs = [p2.location() - p1.location() for (p1, p2) in ps.values()]
         tdiffs = [(p2.time - p1.time) / 1e9 for (p1, p2) in ps.values()]
-        return avgloc(locdiffs).scale(1 / average(tdiffs))  # whops: todo: divide individually
+        return avgloc(locdiffs).scale(1 / average(tdiffs))  # todo: divide individually
     else:
         loc1 = avgloc([d.location() for d in d1])
         loc2 = avgloc([d.location() for d in d2])
@@ -63,7 +63,7 @@ def _velocity(d1, d2):
         t2 = average([d.time for d in d2]) / 1e9
         return (loc2 - loc1).scale(1 / (t2 - t1))
 
-# calculate a gaussian pdf, scaled to 2\pi (or something)
+# calculate a gaussian-like score
 def sigmoid(x2, sd): return exp(-x2 / (sd * sd)) / sd
 
 
@@ -90,18 +90,22 @@ def score_similarity(d1: List[Detection], d2: List[Detection]) -> float:
     return sigmoid(diffsq, score_sd) * (1.0 + strengths)
 
 def location_difference(trdet: List[Detection], det: List[Detection], velocity: Optional[Location] = None) -> Optional[float]:
-    '''Calculate similiarty score between a track and a new detection'''
+    '''Calculate similarity score between a track and a new detection'''
     ps = _pairs(trdet, det)
-    if not ps: return None
+    if not ps:
+        return None
 
     def tdelta(d1, d2): return (d2.time - d1.time) / 1e9
-    plocs = [b.location() - a.location() - (velocity.scale(tdelta(a, b)) if velocity else Location(0, 0, 0)) for (a, b) in ps.values()]
+    plocs = [
+        b.location() - a.location() - (velocity.scale(tdelta(a, b)) if velocity else Location(0, 0, 0))
+        for (a, b) in ps.values()
+    ]
     zsquares = sum([loc.z * loc.z for loc in plocs])
     xysquares = sum([loc.x * loc.x + loc.y * loc.y for loc in plocs])
     return sigmoid(zsquares, matched_f_z_sd) * sigmoid(xysquares, matched_f_xy_sd)
 
 def avg_loc_diff(trdet: List[Detection], det: List[Detection], velocity: Optional[Location] = None) -> float:
-    '''Calculate similarity of avg location, return z and xy separately'''
+    '''Calculate similarity of average location'''
     tloc = avgloc([x.location() for x in trdet])
     dloc = avgloc([y.location() for y in det])
     tdelta = average([d.time for d in det]) / 1e9 - average([d.time for d in trdet]) / 1e9
@@ -111,8 +115,8 @@ def avg_loc_diff(trdet: List[Detection], det: List[Detection], velocity: Optiona
 
 def track_similarity(tr: Track, det: List[Detection]) -> float:
     d0 = tr.last()
-    ret = (1 + fspec_sim_squared(d0, det))       # up to 100% bonus for freq score match
-    ret = ret * (1 + score_similarity(d0, det))  # bonus for direct signal-strength consistency
+    ret = (1 + fspec_sim_squared(d0, det))
+    ret = ret * (1 + score_similarity(d0, det))
     locscore = location_difference(tr.last(), det, tr.velocity)
     if locscore is not None:
         ret = ret * locscore
@@ -129,9 +133,9 @@ def track1(tracks: List[Track], detections: List[List[Detection]], threshold: fl
             mx[t, d] = track_similarity(tracks[t], detections[d])
     tind, dind = linear_sum_assignment(mx, maximize=True)
 
-    # todo: add velocity, time! and uncertainty
-    # todo: adjust for average movement (include MRU)
-    # todo: predict locations (include older tracks) and recalculate
+    # todo: add velocity, time and uncertainty
+    # todo: adjust for average movement
+    # todo: predict locations and recalculate
 
     updatedtracks = []
     tmatch = [tracks[i] for i in tind]
@@ -141,27 +145,29 @@ def track1(tracks: List[Track], detections: List[List[Detection]], threshold: fl
             t = tmatch[i]
             if debug:
                 print('Appended by score:', mx[tind[i], dind[i]])
-                for e in t.last(): print(e)
+                for e in t.last():
+                    print(e)
                 print('--')
-                for e in dmatch[i]: print(e)
+                for e in dmatch[i]:
+                    print(e)
                 print()
             t.append(dmatch[i])
             updatedtracks.append(t)
         else:
             if debug:
                 print('Not above threshold:', mx[tind[i], dind[i]])
-                for e in dmatch[i]: print(e)
+                for e in dmatch[i]:
+                    print(e)
                 print('--')
-                for e in tmatch[i].last(): print(e)
+                for e in tmatch[i].last():
+                    print(e)
                 print()
             updatedtracks.append(tmatch[i])
             updatedtracks.append(Track(dmatch[i]))
 
     # add unmatched detections
     trest = [tracks[i] for i in range(len(tracks)) if i not in tind]
-    # print('Trest:', trest)
     drest = [detections[i] for i in range(len(detections)) if i not in dind]
-    # print('Drest:', drest)
 
     return updatedtracks + trest + [Track(d) for d in drest]
 
