@@ -130,8 +130,8 @@ def link_det(dets1: List[List[Detection]], dets2: List[List[Detection]], thresho
 
 def cluster_det(dets: Dict[str, List[Detection]]) -> List[List[Detection]]:
     '''Group detections from the same objects across frequencies'''
-    for g, dd in dets.items():
     acc = []
+    for g, dd in reversed(dets.items()):  # hack to start with most detections
         dd = [[d] for d in dd]
         if not acc:
             acc = dd
