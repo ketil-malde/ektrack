@@ -1,6 +1,6 @@
 from netcdf2dets import get_detections, load
 from detections import Detection, cluster_det
-from track import Track, track1
+from track import Track, track1, avgloc
 
 from matplotlib import pyplot as plt, colors as mcolors
 import numpy as np
@@ -27,7 +27,8 @@ def plot(ch: Dict[str, xr.Dataset], tracks: List[Track] = []) -> None:
 
         # Date handling in Python is a stinking mess
         def t_pings(trd: List[List[Detection]]) -> List[datetime]: return [datetime.fromtimestamp(d[0].time / 1e9, tz=timezone.utc) for d in trd]
-        def t_ranges(trd: List[List[Detection]]) -> List[float]: return [d[0].location().z for d in trd]
+        # def t_ranges(trd: List[List[Detection]]) -> List[float]: return [d[0].location().z
+        def t_ranges(trd: List[List[Detection]]) -> List[float]: return [avgloc([dd.location() for dd in d]).z for d in trd]
 
         # Plot tracks
         if tracks:
