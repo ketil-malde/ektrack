@@ -69,8 +69,8 @@ def sigmoid(x2, sd): return exp(-x2 / (sd * sd)) / sd
 
 # Parameters
 fspectrum_sd = 1
-matched_f_z_sd = 0.4
-matched_f_xy_sd = 1.0
+matched_f_z_sd = 0.1
+matched_f_xy_sd = 0.5
 avgloc_z_sd = 0.1
 avgloc_xy_sd = 0.2
 
