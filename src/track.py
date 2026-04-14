@@ -8,7 +8,7 @@ import numpy as np
 from detections import Location, Detection, avgloc
 from detections import link_det, mkdet
 
-debug = True
+debug = False
 
 # ############### Tracking across time ########################
 

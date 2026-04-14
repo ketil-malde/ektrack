@@ -104,36 +104,47 @@ def showtracks(ts: List[Track]) -> None:
         print()
 
 
+def writecsv(ts):
+    '''Write tracks as a tidyfied text table'''
+    for ti, t in enumerate(ts):
+        for dc in t.detections:
+            for d in dc:
+                print(f'{ti}\t{d.pingno}\t{d.range}\t{d.freq}')
+
+
 if __name__ == "__main__":
+    # todo: read a configuration (and use it below)
     print('Reading netCDF file: ' + sys.argv[1])
     ds = load(sys.argv[1])
+    ts = track(ds, range(100,1000))
+    writecsv(ts)
 
+def test():
     # rds = regrid(ds)
     # rds.T.plot.imshow(rgb='color', add_colorbar=False)
     # plt.show()
-    ds1: Dict[str, List[Detection]] = get_detections(ds, 100, minrng=6.0, maxrng=8.0, minprom=2.0)
-    ds2: Dict[str, List[Detection]] = get_detections(ds, 101, minrng=6.0, maxrng=8.0, minprom=2.0)
-    for d in [ds1, ds2]:
-        for s, z in d.items():
-            print(s)
-            for z0 in z: print(z0)
-        print()
+    # ds1: Dict[str, List[Detection]] = get_detections(ds, 100, minrng=6.0, maxrng=8.0, minprom=2.0)
+    # ds2: Dict[str, List[Detection]] = get_detections(ds, 101, minrng=6.0, maxrng=8.0, minprom=2.0)
+    # for d in [ds1, ds2]:
+    #     for s, z in d.items():
+    #         print(s)
+    #         for z0 in z: print(z0)
+    #     print()
 
-    acc = cluster_det(ds1)
-    for a in acc:
-        print()
-        for aa in a:
-            print(aa)
+    # acc = cluster_det(ds1)
+    # for a in acc:
+    #     print()
+    #     for aa in a:
+    #         print(aa)
 
     print('\n*** Tracking ***\n')
     ts = []
-    ts = track(ds, range(100, 200), minprom=2, minrng=6.0, maxrng=6.5)
+    ts = track(ds, range(170, 200), minprom=3, minrng=8, maxrng=13)
     def sortidx(t): return t.detections[0][0].range  # workaround for mypy
     showtracks(sorted(ts, key=sortidx))
 
     # exit(0)
-    # ts = track(ds, range(100, 150), minprom=3, minrng=0, maxrng=99999)
-    # plot(ds, ts)
+    plot(ds, ts)
 
     # Todo - tests:
     # 1. number of tracks
