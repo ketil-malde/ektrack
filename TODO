@@ -1,0 +1,9 @@
+Pri 0 : working main, merge into master, publish
+
+Pri 1 : transducer/kanalnavn into detections
+
+Pri 2 : transducer placement
+   ./ACOUSTIC/LSSS/LSSS_FILES/ReferenceFiles/HorizontalTransducerOffsets_Norway_Messor_20210101.xml
+
+Pri inf: estimere transducer placement?
+
