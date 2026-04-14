@@ -32,7 +32,8 @@ def plot(ch: Dict[str, xr.Dataset], tracks: List[Track] = []) -> None:
 
         # Plot tracks
         if tracks:
-            for t in tracks:
+            for t in tracks[:1]:
+                showtracks([t])
                 if len(t.detections) > 1:
                     tdata = xr.DataArray(t_ranges(t.detections),
                                          coords={'time': t_pings(t.detections)},

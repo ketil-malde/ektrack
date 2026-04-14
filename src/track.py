@@ -117,7 +117,7 @@ def track_similarity(tr: Track, det: List[Detection]) -> float:
     ret = (1 + 2 * fspec_sim_squared(d0, det))       # up to 100% bonus for freq score match
     if debug: print(f'frequency match bonus = {ret:.4f}')
     tdelta = (det[0].time - d0[0].time) / 1e9  # seconds
-    ret = ret / tdelta
+    ret = ret / (tdelta * tdelta)  # should probably modify the sharpness of location instead?
     locscore = location_difference(tr.last(), det, None)  # tr.velocity)
     if locscore is not None:
         if debug: print(f'locscore = {locscore:.8f}')
@@ -130,7 +130,7 @@ def track_similarity(tr: Track, det: List[Detection]) -> float:
     return ret
 
 
-def track1(tracks: List[Track], detections: List[List[Detection]], threshold: float = 1e-6) -> List[Track]:
+def track1(tracks: List[Track], detections: List[List[Detection]], threshold: float = 1) -> List[Track]:
     # link tracks to detections (high confidence)
     ntracks, ndets = len(tracks), len(detections)
     mx = np.empty((ntracks, ndets))
