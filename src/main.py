@@ -107,10 +107,12 @@ def showtracks(ts: List[Track]) -> None:
 
 def writecsv(ts):
     '''Write tracks as a tidyfied text table'''
+    print('#track\tping\t\range\t\tscore\tx\ty\tz')
     for ti, t in enumerate(ts):
         for dc in t.detections:
             for d in dc:
-                print(f'{ti}\t{d.pingno}\t{d.range}\t{d.freq}')
+                loc = d.location()
+                print(f'{ti}\t{d.pingno}\t{d.range:.2f}\t{d.freq}\tscore:\t{d.score:.2f}\tloc:\t{loc.x:.2f}\t{loc.y:.2f}\t{loc.z:.2f}')
 
 
 if __name__ == "__main__":
